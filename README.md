@@ -171,12 +171,8 @@ the observer typed, often an address, so it isn't shown.
 
 ## Getting an eBird API key
 
-Every user needs an eBird API key of their own. Keys are requested through eBird Data Access on the eBird website,
-signed in with your eBird account, in two steps:
-
-1. **Request eBird data access.** This first request is reviewed by hand, so it can take a while. Once it is approved,
-   the Data Access page lists the datasets and the API you can request.
-2. **Request access to the API** on that page with the form below. The key is granted right away.
+Every user needs an eBird API key of their own. Sign in with your eBird account, go to
+[eBird Data Access](https://ebird.org/data/download) and request access to the API with the form below.
 
 eBird's [data terms](https://www.birds.cornell.edu/home/ebird-data-access-terms-of-use/) let you use the data only
 for the purpose you state in the request, so describe your use as it is. For a private person using this
