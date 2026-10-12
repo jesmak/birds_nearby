@@ -1,0 +1,78 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Birds Nearby",
+        "description": "Bird sightings from eBird within a radius of a point. You need your own eBird API key, which you can request through eBird Data Access.",
+        "data": {
+          "name": "Name",
+          "api_key": "eBird API key",
+          "location": "Area"
+        },
+        "data_description": {
+          "name": "The name of the area's device and sensors.",
+          "api_key": "Checked with eBird before it is saved.",
+          "location": "The centre and radius of the area. The radius can be at most 50 km."
+        }
+      },
+      "reauth_confirm": {
+        "title": "New eBird API key",
+        "description": "eBird no longer accepts the API key of {name}. Enter a new one.",
+        "data": {
+          "api_key": "eBird API key"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "eBird didn't accept the API key.",
+      "cannot_connect": "eBird couldn't be reached. Try again in a while.",
+      "radius_out_of_range": "The radius must be between 1 and 50 km."
+    },
+    "abort": {
+      "already_configured": "This area has already been added.",
+      "reauth_successful": "The new API key was saved."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Birds Nearby",
+        "data": {
+          "scan_interval": "Update interval, in minutes",
+          "recent_days": "Recent days",
+          "back_days": "Back after, in days",
+          "region": "Region for first records"
+        },
+        "data_description": {
+          "scan_interval": "At least 15 minutes. Each update makes two requests to eBird.",
+          "recent_days": "How many of the latest days the recent sensor and the map show.",
+          "back_days": "A species that hasn't been seen for this many days fires an event when it is seen again.",
+          "region": "The eBird county or region whose species list a sighting is compared with, such as US-NY-109 or FI-02. Picked from the nearest hotspot when the area was added. Leave empty to turn first records off."
+        }
+      }
+    },
+    "error": {
+      "invalid_region": "That isn't an eBird region code, such as US-NY-109 or FI-02."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "notable": {
+        "name": "Notable",
+        "unit_of_measurement": "species"
+      },
+      "recent": {
+        "name": "Recent",
+        "unit_of_measurement": "species"
+      },
+      "year_list": {
+        "name": "Year list",
+        "unit_of_measurement": "species"
+      },
+      "map": {
+        "name": "Sighting places",
+        "unit_of_measurement": "places"
+      }
+    }
+  }
+}

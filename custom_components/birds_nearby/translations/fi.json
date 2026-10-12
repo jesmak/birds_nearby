@@ -1,0 +1,78 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Birds Nearby",
+        "description": "Lintuhavainnot eBirdistä tietyn säteen sisältä. Tarvitset oman eBird-API-avaimesi, jonka voi pyytää eBird Data Accessin kautta.",
+        "data": {
+          "name": "Nimi",
+          "api_key": "eBird-API-avain",
+          "location": "Alue"
+        },
+        "data_description": {
+          "name": "Alueen laitteen ja anturien nimi.",
+          "api_key": "Avain tarkistetaan eBirdistä ennen tallennusta.",
+          "location": "Alueen keskipiste ja säde. Säde voi olla enintään 50 km."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Uusi eBird-API-avain",
+        "description": "eBird ei enää hyväksy alueen {name} API-avainta. Anna uusi avain.",
+        "data": {
+          "api_key": "eBird-API-avain"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "eBird ei hyväksynyt API-avainta.",
+      "cannot_connect": "eBirdiin ei saatu yhteyttä. Yritä hetken päästä uudelleen.",
+      "radius_out_of_range": "Säteen pitää olla 1–50 km."
+    },
+    "abort": {
+      "already_configured": "Tämä alue on jo lisätty.",
+      "reauth_successful": "Uusi API-avain tallennettiin."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Birds Nearby",
+        "data": {
+          "scan_interval": "Päivitysväli minuutteina",
+          "recent_days": "Viimepäivät",
+          "back_days": "Palannut, kun poissa päiviä",
+          "region": "Alue ensihavainnoille"
+        },
+        "data_description": {
+          "scan_interval": "Vähintään 15 minuuttia. Jokainen päivitys tekee kaksi pyyntöä eBirdiin.",
+          "recent_days": "Kuinka monta viimepäivää viimeaikaiset-anturi ja kartta näyttävät.",
+          "back_days": "Kun laji, jota ei ole nähty näin moneen päivään, havaitaan taas, siitä luodaan tapahtuma.",
+          "region": "eBirdin county tai alue, jonka lajilistaan havaintoa verrataan, esimerkiksi FI-02 tai US-NY-109. Valittu lähimmän havaintopaikan mukaan, kun alue lisättiin. Jätä tyhjäksi, jos ensihavaintoja ei tarvita."
+        }
+      }
+    },
+    "error": {
+      "invalid_region": "Tämä ei ole eBirdin aluekoodi, kuten FI-02 tai US-NY-109."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "notable": {
+        "name": "Huomionarvoiset",
+        "unit_of_measurement": "lajia"
+      },
+      "recent": {
+        "name": "Viimeaikaiset",
+        "unit_of_measurement": "lajia"
+      },
+      "year_list": {
+        "name": "Vuosilista",
+        "unit_of_measurement": "lajia"
+      },
+      "map": {
+        "name": "Havaintopaikat",
+        "unit_of_measurement": "paikkaa"
+      }
+    }
+  }
+}
