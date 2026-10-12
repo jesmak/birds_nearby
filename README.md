@@ -1,7 +1,7 @@
 # Birds Nearby for Home Assistant
 
-A Home Assistant integration for bird sightings within a radius of your home: the notable ones, your year list and
-first sightings of the year, and the sightings on a map. Sightings come from [eBird](https://ebird.org), species
+A Home Assistant integration for bird sightings within a radius of your home, with the notable ones, your year list
+and first sightings of the year, and the sightings on a map. Sightings come from [eBird](https://ebird.org), species
 pictures from Wikipedia and Wikimedia Commons.
 
 [![GitHub Release][releases-shield]][releases] [![GitHub Release Date][release-date-shield]][releases]
@@ -44,7 +44,7 @@ The radius is at most 50 km, which is eBird's limit. Birds only.
 
 ## Installation
 
-You need an eBird API key first: see [Getting an eBird API key](#getting-an-ebird-api-key).
+You need an eBird API key first. See [Getting an eBird API key](#getting-an-ebird-api-key).
 
 ### With HACS
 
@@ -63,9 +63,9 @@ You need an eBird API key first: see [Getting an eBird API key](#getting-an-ebir
 
 ## Settings
 
-Adding the integration asks for a name, your eBird API key and the area: a point on the map, your home by default,
-and a radius around it. The key is checked with eBird before it is saved. Add the integration again for another
-area, such as a summer cottage.
+Adding the integration asks for a name, your eBird API key and the area, which is a point on the map, your home by
+default, and a radius around it. The key is checked with eBird before it is saved. Add the integration again for
+another area, such as a summer cottage.
 
 | Name         | Type     | Description                                                     | Default      |
 | ------------ | -------- | --------------------------------------------------------------- | ------------ |
@@ -84,9 +84,9 @@ If eBird stops accepting the key, Home Assistant asks for a new one.
 | Back after               | A species unseen for this many days fires an event when it is seen again, 7–365               | 30      |
 | Region for first records | The eBird county or region a sighting is compared with, such as `US-NY-109` or `FI-02`. Empty turns first records off | From the nearest hotspot |
 
-When the area is added, the region is taken from the nearest eBird hotspot: its county where eBird has counties,
-otherwise its state or region (Finland has no counties in eBird, so a Finnish area gets a region such as `FI-02`).
-Change it for a home near a border.
+When the area is added, the region is taken from the nearest eBird hotspot. That is its county where eBird has
+counties, otherwise its state or region (Finland has no counties in eBird, so a Finnish area gets a region such as
+`FI-02`). Change it for a home near a border.
 
 ## Sensors
 
@@ -97,7 +97,7 @@ Change it for a home near a border.
 | `sensor.birds_nearby_year_list`       | Species seen this year                                         | `year`, `since`, and `species`: each with the day it was first seen |
 | `sensor.birds_nearby_sighting_places` | Places on the map                                              | The map feed                                                        |
 
-The IDs come from the name given to the area and follow Home Assistant's language: in Finnish the year list is
+The IDs come from the name given to the area and follow Home Assistant's language. In Finnish the year list is
 `sensor.birds_nearby_vuosilista`. Use the ones your sensors have.
 
 A sighting in the attributes has `species_code`, `name`, `scientific_name`, `count` (empty when the observer only
@@ -106,7 +106,7 @@ for a personal location), `hotspot`, `url` (the species' page on eBird), and `pi
 picture has been found.
 
 The attributes are left out of the recorder, so only the counts are kept in the history. The year list keeps long
-term statistics: a chart of it shows the list growing through the year and starting over in January.
+term statistics, so a chart of it shows the list growing through the year and starting over in January.
 
 ## Events
 
@@ -166,7 +166,7 @@ feed plugin. Older versions show the list without pictures.
 
 Every place is drawn where it was reported. A hotspot, a public place shared by eBird's observers, is titled with its
 name, with its distance and direction from the area's centre below it. A personal location, one an observer pinned
-for themselves, is titled with its distance and direction instead ("3.2 km southwest"): its own name is whatever
+for themselves, is titled with its distance and direction instead ("3.2 km southwest"). Its own name is whatever
 the observer typed, often an address, so it isn't shown.
 
 ## Getting an eBird API key
