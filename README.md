@@ -19,6 +19,8 @@ This is an unofficial integration, not affiliated with or endorsed by eBird or t
 - **First of the year:** an event when a species appears that isn't on this year's list yet.
 - **Back after a while:** an event when a species that hasn't been seen within the radius for a set number of days
   appears again.
+- **First record in the region:** an event when a species appears that has never been recorded in your county, or
+  in your region where eBird has no counties.
 - **A map feed** for [ha-map-card](https://github.com/nathan-gs/ha-map-card) through
   [ha-map-card-plugin-map-feed](https://github.com/jesmak/ha-map-card-plugin-map-feed): notable sightings and the
   newest sighting of each species as points, with the species name, count, date and a picture.
@@ -41,8 +43,9 @@ The radius is at most 50 km, which is eBird's limit. Birds only.
 Sightings come from the [eBird API 2.0](https://documenter.getpostman.com/view/664302/S1ENwy59), using your own
 API key.
 
-- **Two requests per update:** recent observations and notable observations near your home. Every 30 minutes by
-  default, never more often than every 15 minutes. That's about 100 requests a day.
+- **Two requests per update:** recent observations and notable observations near your home. Every 60 minutes by
+  default, never more often than every 15 minutes. That's about 50 requests a day, plus one
+  a day for the list of species ever recorded in your county or region.
 - **Your location is rounded** to two decimals (about 1 km) before it is sent.
 - **No observer names.** Only eBird's simple detail level is requested, which leaves them out.
 - **Private locations stay approximate.** A sighting at a private location (often someone's garden) is shown on the
@@ -58,8 +61,12 @@ freely licensed files. A picture is looked up once per species and cached.
 
 ## Getting an eBird API key
 
-Every user needs an eBird API key of their own. eBird reviews requests by hand, so getting one can take a while.
-Requests are made through eBird Data Access on the eBird website, signed in with your eBird account.
+Every user needs an eBird API key of their own. Keys are requested through eBird Data Access on the eBird website,
+signed in with your eBird account, in two steps:
+
+1. **Request eBird data access.** This first request is reviewed by hand, so it can take a while. Once it is approved,
+   the Data Access page lists the datasets and the API you can request.
+2. **Request access to the API** on that page with the form below. The key is granted right away.
 
 eBird's [data terms](https://www.birds.cornell.edu/home/ebird-data-access-terms-of-use/) let you use the data only
 for the purpose you state in the request, so describe your use as it is. For a private person using this
