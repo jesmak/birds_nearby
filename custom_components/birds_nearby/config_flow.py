@@ -185,6 +185,4 @@ class BirdsOptionsFlow(OptionsFlow):
             **self.config_entry.options,
             **(user_input or {}),
         }
-        return self.async_show_form(
-            step_id="init", data_schema=self.add_suggested_values_to_schema(schema, current), errors=errors
-        )
+        return self.async_show_form(step_id="init", data_schema=self.add_suggested_values_to_schema(schema, current), errors=errors)

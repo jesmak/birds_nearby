@@ -51,9 +51,7 @@ async def test_adding_an_area_checks_the_key_and_picks_the_region(
     assert hotspot_call[3]["x-ebirdapitoken"] == API_KEY
 
 
-async def test_a_refused_key(
-    enable_custom_integrations, hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
-) -> None:
+async def test_a_refused_key(enable_custom_integrations, hass: HomeAssistant, aioclient_mock: AiohttpClientMocker) -> None:
     aioclient_mock.get(f"{EBIRD_URL}/ref/hotspot/geo", status=403)
 
     result = await start(hass)
@@ -65,9 +63,7 @@ async def test_a_refused_key(
     assert result["errors"] == {"base": "invalid_auth"}
 
 
-async def test_a_radius_beyond_ebirds_limit(
-    enable_custom_integrations, hass: HomeAssistant, ebird: AiohttpClientMocker
-) -> None:
+async def test_a_radius_beyond_ebirds_limit(enable_custom_integrations, hass: HomeAssistant, ebird: AiohttpClientMocker) -> None:
     result = await start(hass)
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {CONF_NAME: "Birds Nearby", CONF_API_KEY: API_KEY, CONF_LOCATION: {**AREA, "radius": 80000}}

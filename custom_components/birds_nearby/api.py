@@ -23,9 +23,7 @@ class EbirdClient:
 
     async def recent(self, latitude: float, longitude: float, radius_km: int, locale: str) -> list[Observation]:
         """The newest observation of each species within the radius, over the last 30 days."""
-        return parse_observations(
-            await self._get("data/obs/geo/recent", self._near(latitude, longitude, radius_km, locale))
-        )
+        return parse_observations(await self._get("data/obs/geo/recent", self._near(latitude, longitude, radius_km, locale)))
 
     async def notable(self, latitude: float, longitude: float, radius_km: int, locale: str) -> list[Observation]:
         """eBird's notable observations within the radius, over the last 30 days.
@@ -74,9 +72,7 @@ class EbirdClient:
 
     async def _get(self, path: str, params: dict[str, Any]) -> Any:
         try:
-            async with self._session.get(
-                f"{EBIRD_URL}/{path}", params=params, headers=self._headers, timeout=TIMEOUT
-            ) as response:
+            async with self._session.get(f"{EBIRD_URL}/{path}", params=params, headers=self._headers, timeout=TIMEOUT) as response:
                 if response.status in (401, 403):
                     raise EbirdAuthError("eBird refused the API key")
                 if response.status != 200:
