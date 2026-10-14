@@ -255,27 +255,51 @@
                                 "details": [
                                     {
                                         "label": "Citrine Wagtail",
-                                        "value": "1 bird · 06:40 · notable, not yet reviewed"
+                                        "value": "1 bird · 06:40 · notable, not yet reviewed",
+                                        "image": {
+                                            "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/99/Citrine_Wagtail_%28Motacilla_citreola%29_%2814343964296%29.jpg/500px-Citrine_Wagtail_%28Motacilla_citreola%29_%2814343964296%29.jpg",
+                                            "caption": "Citrine Wagtail · Ron Knight from Seaford, East Sussex, United Kingdom, CC BY 2.0"
+                                        }
                                     },
                                     {
                                         "label": "Sedge Warbler",
-                                        "value": "3 birds · 07:10"
+                                        "value": "3 birds · 07:10",
+                                        "image": {
+                                            "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Sedge_warbler_%28Acrocephalus_schoenobaenus%29_3.jpg/500px-Sedge_warbler_%28Acrocephalus_schoenobaenus%29_3.jpg",
+                                            "caption": "Sedge Warbler · Charles J. Sharp, CC BY-SA 4.0"
+                                        }
                                     },
                                     {
                                         "label": "Common Tern",
-                                        "value": "14 birds · 07:05"
+                                        "value": "14 birds · 07:05",
+                                        "image": {
+                                            "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8e/2014-05-18_Sterna_hirundo%2C_Killingworth_Lake%2C_Northumberland_04.jpg/500px-2014-05-18_Sterna_hirundo%2C_Killingworth_Lake%2C_Northumberland_04.jpg",
+                                            "caption": "Common Tern · MPF, CC BY-SA 4.0"
+                                        }
                                     },
                                     {
                                         "label": "Horned Grebe",
-                                        "value": "2 birds · 06:55"
+                                        "value": "2 birds · 06:55 · VU",
+                                        "image": {
+                                            "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/77/Podiceps_auritus_%2813909539717%29.jpg/500px-Podiceps_auritus_%2813909539717%29.jpg",
+                                            "caption": "Horned Grebe · Ekaterina Chernetsova (Papchinskaya) from Saint-Petersburg…, CC BY 2.0"
+                                        }
                                     },
                                     {
                                         "label": "Great Crested Grebe",
-                                        "value": "6 birds · 06:50"
+                                        "value": "6 birds · 06:50",
+                                        "image": {
+                                            "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/27/Podiceps_cristatus_2_-_Lake_Dulverton.jpg/500px-Podiceps_cristatus_2_-_Lake_Dulverton.jpg",
+                                            "caption": "Great Crested Grebe · JJ Harrison (https://www.jjharrison.com.au/), CC BY-SA 3.0"
+                                        }
                                     },
                                     {
                                         "label": "Black-headed Gull",
-                                        "value": "120 birds · 06:45"
+                                        "value": "120 birds · 06:45",
+                                        "image": {
+                                            "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/29/Chroicocephalus_ridibundus_%28summer%29.jpg/500px-Chroicocephalus_ridibundus_%28summer%29.jpg",
+                                            "caption": "Black-headed Gull · Hans Hillewaert, CC BY-SA 3.0"
+                                        }
                                     }
                                 ],
                                 "link": {
@@ -563,6 +587,7 @@
         {
             "name": "dashboard",
             "width": 1280,
+            "popup": "6",
             "view": {
                 "type": "sections",
                 "max_columns": 3,

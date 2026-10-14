@@ -5,8 +5,13 @@ first sightings of the year, and the sightings on a map.
 
 [![GitHub Release][releases-shield]][releases] [![GitHub Release Date][release-date-shield]][releases] [![HACS][hacs-shield]][hacs] [![License][license-shield]](LICENSE)
 
-<img src="https://raw.githubusercontent.com/jesmak/birds_nearby/main/docs/images/dashboard-light.png#gh-light-mode-only" width="1280" alt="A dashboard around Tampere, with a map of eight places where birds were seen, older ones fainter and one with a notable sighting in orange, the year list and recent species counts, and lists of the notable sighting, the newest species of the year compared with last year and the species seen by this date last year but not yet">
-<img src="https://raw.githubusercontent.com/jesmak/birds_nearby/main/docs/images/dashboard-dark.png#gh-dark-mode-only" width="1280" alt="A dashboard around Tampere, with a map of eight places where birds were seen, older ones fainter and one with a notable sighting in orange, the year list and recent species counts, and lists of the notable sighting, the newest species of the year compared with last year and the species seen by this date last year but not yet">
+<img src="https://raw.githubusercontent.com/jesmak/birds_nearby/main/docs/images/dashboard-light.png#gh-light-mode-only" width="1280" alt="A dashboard around Tampere, with a map of eight places where birds were seen, older ones fainter, and the popup of a place with a notable sighting listing six species with their pictures. Beside it the year list and recent species counts, and lists of the notable sighting, the newest species of the year compared with last year and the species seen by this date last year but not yet">
+<img src="https://raw.githubusercontent.com/jesmak/birds_nearby/main/docs/images/dashboard-dark.png#gh-dark-mode-only" width="1280" alt="A dashboard around Tampere, with a map of eight places where birds were seen, older ones fainter, and the popup of a place with a notable sighting listing six species with their pictures. Beside it the year list and recent species counts, and lists of the notable sighting, the newest species of the year compared with last year and the species seen by this date last year but not yet">
+
+The sightings in the picture are made up. The species pictures are from Wikimedia Commons. The Citrine Wagtail is by
+Ron Knight (CC BY 2.0), the Sedge Warbler by Charles J. Sharp (CC BY-SA 4.0), the Common Tern by MPF (CC BY-SA 4.0),
+the Horned Grebe by Ekaterina Chernetsova (CC BY 2.0), the Great Crested Grebe by JJ Harrison (CC BY-SA 3.0) and the
+Black-headed Gull by Hans Hillewaert (CC BY-SA 3.0).
 
 ## What is it?
 
