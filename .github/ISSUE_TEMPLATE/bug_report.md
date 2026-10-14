@@ -7,34 +7,34 @@ assignees: ""
 ---
 
 <!-- READ THIS FIRST:
-- If you need additional help with this template please refer to https://www.home-assistant.io/help/reporting_issues/
-- Make sure you are running the latest version of Home Assistant before reporting an issue: https://github.com/home-assistant/home-assistant/releases
-- Provide as many details as possible. Do not delete any text from this template!
-- Never paste your eBird API key. Check the log for it before posting.
+- Make sure you are running the latest version of Home Assistant and of this integration before reporting an issue.
+- Personal data and secrets don't belong here. Remove names, addresses, email addresses, tracking numbers, pickup
+  codes, API keys and tokens from anything you paste, logs included.
 -->
 
 **Checklist:**
 
-- [ ] I updated to the latest version available
-- [ ] I restarted Home Assistant after updating
+- [ ] I updated to the latest version of the integration
+- [ ] I updated to the latest version of Home Assistant
+- [ ] I removed personal data from everything below
 
-**Release with the issue:**
+**Version of the integration:**
 
-**Last working release (if known):**
+**Version of Home Assistant:**
 
-**Home Assistant version:**
+**Last working version (if known):**
 
 **Description of problem:**
 
 <!--
-Explain what the issue is, and how things should behave. If possible provide a screenshot with a description.
+Explain what the issue is, and what you expected instead.
 -->
 
-**Debug log:**
+**Logs:**
 
 <!--
-Turn on debug logging for the integration in Settings > Devices & services > Birds Nearby, reproduce the problem,
-turn it off again and paste the relevant lines here.
+Turn on debug logging for the integration on its page in Settings › Devices & services, reproduce the problem,
+then turn it off again and paste the lines of the integration from the log that downloads.
 -->
 
 ```
