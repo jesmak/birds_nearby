@@ -37,9 +37,11 @@ integration is set up. The year list and first sightings of the year start 30 da
 first year is incomplete. The first update fills the lists from those 30 days without firing any events. First
 sightings are compared with last year's only once a year's list has run from 1 January.
 
-When eBird updates its taxonomy, usually in October, a species that gets a new code looks like a new species. Its
-first sighting under the new code fires a first of the year and a first record in the region, and the year list
-counts it twice until the next year.
+When eBird updates its taxonomy, usually in October, some species get new codes. A species whose scientific name
+stays the same is followed to its new code, with its year list date and history. One that also gets a new scientific
+name, as after some splits, looks like a new species, and its first sighting under the new name is a first of the
+year. After an upgrade, the scientific names of the species already in the memory are asked from eBird using the day's
+extra call instead of the region's list, never two days in a row.
 
 The radius is at most 50 km, which is eBird's limit. Birds only.
 
@@ -149,13 +151,15 @@ term statistics, so a chart of it shows the list growing through the year and st
 | `birds_nearby_back`            | A species unseen for the set number of days. `days_unseen` says how long |
 | `birds_nearby_first_in_region` | A species never recorded in the region before. `region` names it         |
 
-The event data is a sighting as above, with `entry_id`, `notable` (whether it is among eBird's notable
-observations, whatever the event) and `reviewed`. A first of the year also has
-`last_year`, the day the species was first seen last year, and `days_vs_last_year`, how many days later it is this
-year (negative when earlier). `days_vs_last_year` is empty when last year's list didn't run from 1 January, since
-a first date then is often only the day the list started. A sighting is new to the integration when its species and
-checklist are, since eBird gives no time a record was added. Records reach the API only within 30 days of the
-sighting.
+The event data is a sighting as above, with `entry_id`, `notable` (whether it is among eBird's notable observations,
+whatever the event) and `reviewed`. A notable sighting also has `first_in_region`, true when the same sighting is a
+first record in the region and fires that event too, and `days_since_notable`, the days since the species was last among
+the notable observations, empty when it hasn't been in the last month. The notable event fires for every new checklist
+of a rarity, and these let an automation notify only once. A first of the year also has `last_year`, the day the species
+was first seen last year, and `days_vs_last_year`, how many days later it is this year (negative when earlier).
+`days_vs_last_year` is empty when last year's list didn't run from 1 January, since a first date then is often only the
+day the list started. A sighting is new to the integration when its species and checklist are, since eBird gives no time
+a record was added. Records reach the API only within 30 days of the sighting.
 
 A notable sighting not yet reviewed fires `birds_nearby_notable` at once, with `reviewed` false. It goes on the year
 list, and can be a first of the year or a first record in the region, only once eBird's reviewers have accepted it.
@@ -264,9 +268,9 @@ API key.
 
 - **Two requests per update:** recent observations and notable observations within the area. Every 60 minutes by
   default, never more often than every 15 minutes, even when an update is asked for by hand or by an automation.
-  That's about 50 requests a day, plus one a day for the list of species ever recorded in your county or region.
-  When eBird can't be reached, the sensors are unavailable until the next update, which comes at the usual
-  interval.
+  That's about 50 requests a day, plus one a day for the list of species ever recorded in your county or region, or
+  instead of it every other day, while species in the memory have no scientific name, for their names. When eBird
+  can't be reached, the sensors are unavailable until the next update, which comes at the usual interval.
 - **Your location is rounded** to two decimals (about 1 km) before it is sent.
 - **No observer names.** Only eBird's simple detail level is requested, which leaves them out.
 - **Personal locations' names are never shown**, since they are often addresses.

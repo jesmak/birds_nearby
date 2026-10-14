@@ -39,9 +39,11 @@ def observation(
     latitude: float = 60.9811,
     longitude: float = 25.6623,
     reviewed: bool = False,
-    scientific: str = "Turdus merula",
+    scientific: str | None = None,
 ) -> dict[str, Any]:
-    """One observation as eBird sends it at simple detail."""
+    """One observation as eBird sends it at simple detail. Each species code has a scientific name of its own."""
+    if scientific is None:
+        scientific = "Turdus merula" if species == "eurbla" else f"Avis {species}"
     result = {
         "speciesCode": species,
         "comName": name,

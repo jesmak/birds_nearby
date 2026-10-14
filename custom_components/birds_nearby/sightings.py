@@ -89,6 +89,10 @@ class Event:
     notable: bool = False
     # Days since the species was last seen, for the back-after-a-while event.
     days_unseen: int | None = None
+    # For a notable event: whether the same sighting is a first record in the region, and how many days earlier the
+    # species was last notable, so a rarity seen on many checklists can be told apart from a new one.
+    first_in_region: bool = False
+    days_since_notable: int | None = None
 
 
 # Event kinds; the coordinator maps them to the events fired on the bus.
@@ -119,14 +123,23 @@ class Memory:
     polled: str | None = None
     # Species code: the name eBird last gave it, in the language asked for.
     names: dict[str, str] = field(default_factory=dict)
+    # Species code: its scientific name. eBird's yearly taxonomy update gives some species new codes, and the
+    # scientific name is what links a new code to the memory of the old one. Empty for a code eBird no longer knows.
+    scientific: dict[str, str] = field(default_factory=dict)
+    # Species code: the day it was last among the notable observations. Only the last 30 days.
+    notable_seen: dict[str, str] = field(default_factory=dict)
     # The region's species list: the one compared against, and the one fetched last.
     # Comparing against the older one means a sighting can't hide itself by already being on the list.
     region: str | None = None
     region_species: list[str] | None = None
     region_latest: list[str] | None = None
     region_fetched: str | None = None
-    # The day the list was last tried, failed or not: one call a day at most, across restarts and reloads.
-    region_tried: str | None = None
+    # The day the day's extra call to eBird was last made, failed or not: the region's list or, while species in the
+    # memory have no scientific name, their names. One a day at most, across restarts and reloads.
+    extra_call_tried: str | None = None
+    # The day the names were last asked for. They are asked every other day at most, so the region's list is never
+    # older than a day, even while eBird keeps failing to answer for the names.
+    names_asked: str | None = None
     # Species already announced as a first record in the region, so a later checklist doesn't repeat it.
     region_announced: list[str] = field(default_factory=list)
     initialized: bool = False
@@ -138,6 +151,8 @@ class Memory:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Memory:
+        # 1.1.0 kept the day of the extra call as the day the region's list was tried.
+        data = {"extra_call_tried": data.get("region_tried"), **data}
         return cls(**{key: value for key, value in data.items() if key in cls.__dataclass_fields__})
 
     def as_dict(self) -> dict[str, Any]:
@@ -150,9 +165,40 @@ class Memory:
             self.region_species = species
             self.region_announced = []
         else:
-            self.region_species = self.region_latest or species
+            previous = self.region_latest or species
+            # A species is never taken off a region's list of everything ever recorded, except when eBird's taxonomy
+            # changes. That day the new codes are old species, so both lists count as known.
+            self.region_species = sorted({*previous, *species}) if set(previous) - set(species) else previous
         self.region_latest = species
         self.region_fetched = today.isoformat()
+
+    def unnamed(self) -> list[str]:
+        """The codes in the memory whose scientific name hasn't been asked from eBird yet."""
+        codes = {*self.year_list, *self.last_seen, *(code for year in self.past_years.values() for code in year["first_seen"])}
+        return sorted(code for code in codes if code not in self.scientific)
+
+    def rename(self, old: str, new: str) -> None:
+        """Moves everything remembered of a species from its old code to the new one eBird gave it.
+
+        Where both codes have a date, the first sighting is the earlier one and the last sighting the later one.
+        """
+        first_dates = (self.year_list, *(year["first_seen"] for year in self.past_years.values()))
+        for codes, keep in ((self.last_seen, max), (self.notable_seen, max), *((dates, min) for dates in first_dates)):
+            if old in codes:
+                codes[new] = keep(codes[old], codes[new]) if new in codes else codes[old]
+                del codes[old]
+        for codes in (self.names, self.scientific):
+            if old in codes:
+                codes.setdefault(new, codes[old])
+                del codes[old]
+        prefix = f"{old}/"
+        self.seen = {f"{new}/{key[len(prefix) :]}" if key.startswith(prefix) else key: day for key, day in self.seen.items()}
+        self.pending = [f"{new}/{key[len(prefix) :]}" if key.startswith(prefix) else key for key in self.pending]
+        self.region_announced = sorted({new if code == old else code for code in self.region_announced})
+        # Only the list compared against. The list fetched last stays as eBird sent it, so tomorrow's list still shows
+        # the old code leaving it, and the taxonomy day is recognised then if it wasn't today.
+        if self.region_species is not None and old in self.region_species:
+            self.region_species = sorted({new if code == old else code for code in self.region_species})
 
     def region_due(self, region: str | None, today: date) -> bool:
         return region is not None and (region != self.region or self.region_fetched != today.isoformat())
@@ -215,6 +261,7 @@ def remember(
         memory.year = today.year
         memory.year_started = date(today.year, 1, 1).isoformat()
         memory.year_list = {}
+    follow_new_codes(memory, [*recent, *notable])
 
     region_known = set(memory.region_species or [])
     announced = set(memory.region_announced)
@@ -229,6 +276,8 @@ def remember(
     # Oldest first, so a species seen on two new checklists is compared with the older one first.
     for observation in sorted([*recent, *notable], key=lambda item: item.observed):
         memory.names[observation.species] = observation.name
+        if observation.scientific:
+            memory.scientific[observation.species] = observation.scientific
         key = observation.key
         seen_on = observation.observed.date()
         if seen_on.year > memory.year:
@@ -239,8 +288,27 @@ def remember(
             continue
         memory.seen[key] = seen_on.isoformat()
         notable_here = key in notable_keys
-        if is_new and notable_here and memory.initialized:
-            events.append(Event(NOTABLE, observation, notable=True))
+        first_in_region = (
+            memory.region_species is not None
+            and observation.is_species
+            and observation.species not in region_known
+            and observation.species not in announced
+        )
+        if is_new and notable_here:
+            earlier = memory.notable_seen.get(observation.species)
+            if memory.initialized:
+                events.append(
+                    Event(
+                        NOTABLE,
+                        observation,
+                        notable=True,
+                        first_in_region=first_in_region and key not in unconfirmed,
+                        # A checklist uploaded late can be older than the last notable sighting.
+                        days_since_notable=max((seen_on - date.fromisoformat(earlier)).days, 0) if earlier else None,
+                    )
+                )
+            if earlier is None or seen_on.isoformat() > earlier:
+                memory.notable_seen[observation.species] = seen_on.isoformat()
         if key in unconfirmed:
             pending.add(key)
             continue
@@ -255,12 +323,7 @@ def remember(
                 events.append(Event(FIRST_OF_YEAR, observation, notable=notable_here))
             if watched and days_unseen is not None and days_unseen >= back_days:
                 events.append(Event(BACK, observation, notable=notable_here, days_unseen=days_unseen))
-            if (
-                memory.region_species is not None
-                and observation.is_species
-                and observation.species not in region_known
-                and observation.species not in announced
-            ):
+            if first_in_region:
                 announced.add(observation.species)
                 events.append(Event(FIRST_IN_REGION, observation, notable=notable_here))
 
@@ -272,14 +335,35 @@ def remember(
         if previous is None or seen_on.isoformat() > previous:
             memory.last_seen[observation.species] = seen_on.isoformat()
 
+    # Every notable sighting counts as seen, also one handled before an upgrade that started keeping these dates.
+    for observation in notable:
+        seen_on = observation.observed.date().isoformat()
+        if seen_on > memory.notable_seen.get(observation.species, ""):
+            memory.notable_seen[observation.species] = seen_on
+
     oldest = (today - timedelta(days=WINDOW_DAYS + 2)).isoformat()
     memory.seen = {key: seen_on for key, seen_on in memory.seen.items() if seen_on >= oldest}
+    memory.notable_seen = {code: seen_on for code, seen_on in memory.notable_seen.items() if seen_on >= oldest}
     # A report eBird rejected, or never reviewed within its 30 days, is forgotten with them.
     memory.pending = sorted(key for key in pending if key in memory.seen)
     memory.region_announced = sorted(announced)
     memory.polled = today.isoformat()
     memory.initialized = True
     return events
+
+
+def follow_new_codes(memory: Memory, observations: list[Observation]) -> None:
+    """Moves the memory of species that eBird has given a new code, recognised by their scientific name.
+
+    When the old code is still in use too, the species was split and both are species of their own.
+    """
+    in_use = {observation.species for observation in observations}
+    by_name = {name: code for code, name in memory.scientific.items() if name}
+    for observation in observations:
+        old = by_name.get(observation.scientific)
+        if observation.species not in memory.scientific and old and old not in in_use and observation.is_species:
+            memory.rename(old, observation.species)
+            by_name[observation.scientific] = observation.species
 
 
 def newest_first(observations: list[Observation]) -> list[Observation]:

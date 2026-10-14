@@ -14,6 +14,8 @@ from pytest_homeassistant_custom_component.common import async_capture_events, a
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
 from custom_components.birds_nearby.const import EBIRD_URL, EVENT_FIRST_IN_REGION, EVENT_FIRST_OF_YEAR, EVENT_NOTABLE
+from custom_components.birds_nearby.pictures import Picture, SpeciesInfo
+from custom_components.birds_nearby.sightings import Memory
 
 from .conftest import RECENT, REGION, answer, birds_entry, observation
 
@@ -239,3 +241,81 @@ async def test_an_unexpected_observation_fails_the_update_cleanly(
 
     assert not entry.runtime_data.last_update_success
     assert "unexpected format" in str(entry.runtime_data.last_exception)
+
+
+async def test_an_older_memory_asks_for_its_species_scientific_names_instead_of_the_region_list(
+    enable_custom_integrations, hass: HomeAssistant, hass_storage, ebird: AiohttpClientMocker
+) -> None:
+    # A memory from before scientific names were kept: two species on the year list, no names.
+    entry = birds_entry(hass)
+    memory = Memory.new(NOW.date())
+    memory.year_list = {"eurbla": "2026-04-02", "comswi": "2026-05-10", "oldcod1": "2026-03-01"}
+    memory.initialized = True
+    stored = memory.as_dict()
+    del stored["scientific"]
+    hass_storage[f"birds_nearby.{entry.entry_id}"] = {"version": 1, "key": f"birds_nearby.{entry.entry_id}", "data": {"memory": stored}}
+    ebird.clear_requests()
+    ebird.get(f"{EBIRD_URL}/ref/taxonomy/ebird", json=[{"speciesCode": "comswi", "sciName": "Apus apus"}])
+    answer(ebird)
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    calls = [call[1].path.removeprefix("/v2/") for call in ebird.mock_calls if str(call[1]).startswith(EBIRD_URL)]
+    assert sorted(calls) == ["data/obs/geo/recent", "data/obs/geo/recent/notable", "ref/taxonomy/ebird"], "still one extra call"
+    taxonomy = next(call for call in ebird.mock_calls if call[1].path.endswith("taxonomy/ebird"))
+    assert taxonomy[1].query["species"] == "comswi,eurbla,oldcod1"
+    memory = entry.runtime_data.memory
+    assert memory.scientific["comswi"] == "Apus apus"
+    # A code eBird no longer knows gets an empty name, so it isn't asked for again.
+    assert memory.scientific["oldcod1"] == ""
+    assert memory.unnamed() == []
+
+
+async def test_an_event_carries_its_species_picture(
+    enable_custom_integrations,
+    hass: HomeAssistant,
+    ebird: AiohttpClientMocker,
+    freezer: FrozenDateTimeFactory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def found(session, species, scientific):
+        return SpeciesInfo(Picture("https://upload.wikimedia.org/harrier.jpg", "", "A. Author", "CC BY 4.0"), "LC")
+
+    entry = await set_up(hass)
+    monkeypatch.setattr("custom_components.birds_nearby.coordinator.find_species", found)
+    events = async_capture_events(hass, EVENT_NOTABLE)
+    ebird.clear_requests()
+    answer(ebird, recent=[*RECENT, RARITY], notable=[RARITY])
+    freezer.tick(3600)
+    await entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+
+    assert events[0].data["picture"] == "https://upload.wikimedia.org/harrier.jpg"
+    assert events[0].data["iucn_status"] == "LC"
+
+
+async def test_names_are_asked_every_other_day_at_most(
+    enable_custom_integrations, hass: HomeAssistant, aioclient_mock: AiohttpClientMocker, freezer: FrozenDateTimeFactory
+) -> None:
+    # eBird keeps failing to answer for the names: the region's list still comes every other day.
+    aioclient_mock.get(f"{EBIRD_URL}/ref/taxonomy/ebird", status=500)
+    answer(aioclient_mock)
+    entry = birds_entry(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    coordinator = entry.runtime_data
+
+    calls = []
+    for _ in range(4):
+        coordinator.memory.year_list["oldcod1"] = "2026-03-01"
+        coordinator.memory.scientific.pop("oldcod1", None)
+        aioclient_mock.clear_requests()
+        answer(aioclient_mock)
+        aioclient_mock.get(f"{EBIRD_URL}/ref/taxonomy/ebird", status=500)
+        freezer.tick(24 * 3600)
+        await coordinator.async_refresh()
+        extra = [call[1].path for call in aioclient_mock.mock_calls if "taxonomy" in str(call[1]) or "spplist" in str(call[1])]
+        calls.append([path.rsplit("/", 2)[-2] for path in extra])
+
+    assert calls == [["taxonomy"], ["spplist"], ["taxonomy"], ["spplist"]], "one extra call a day, and never two days of names"

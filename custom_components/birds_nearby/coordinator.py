@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -41,6 +42,13 @@ from .sightings import BACK, FIRST_IN_REGION, FIRST_OF_YEAR, NOTABLE, Event, Mem
 _LOGGER = logging.getLogger(__name__)
 
 STORAGE_VERSION = 1
+
+# Species codes asked for at once. A memory from before scientific names were kept has a year's species, a couple of
+# hundred at most, and a longer address is more than a call should carry.
+NAMES_PER_CALL = 200
+
+# How long the events wait for their species' pictures.
+EVENT_PICTURE_SECONDS = 60
 
 EVENT_TYPES = {
     NOTABLE: EVENT_NOTABLE,
@@ -110,7 +118,7 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
         today = now.date()
         locale = ebird_locale(self.hass.config.language)
         try:
-            await self._refresh_region(today)
+            await self._extra_call(today)
             recent = await self._client.recent(self.latitude, self.longitude, self.radius_km, locale)
             notable = await self._client.notable(self.latitude, self.longitude, self.radius_km, locale)
         except EbirdAuthError as err:
@@ -121,6 +129,14 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
 
         first_poll = not self.memory.initialized
         events = remember(self.memory, recent, notable, today, self.back_days)
+        self._save()
+        # An event's species is usually one not seen before, so its picture is looked up first and the event carries it.
+        # Not for long, though: a slow Wikimedia only costs the events their pictures.
+        try:
+            async with asyncio.timeout(EVENT_PICTURE_SECONDS):
+                await self._fetch_species({event.observation.species: event.observation.scientific for event in events})
+        except TimeoutError:
+            _LOGGER.debug("Wikimedia was slow, the events go without some pictures")
         for event in events:
             self.hass.bus.async_fire(EVENT_TYPES[event.kind], self.event_data(event))
         self._save()
@@ -142,20 +158,46 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
         self._find_species([*sightings.notable, *sightings.recent])
         return sightings
 
-    async def _refresh_region(self, today: date) -> None:
-        """The region's species list, once a day. A failure leaves yesterday's list in use."""
-        region = self.region
-        if region is None:
+    async def _extra_call(self, today: date) -> None:
+        """The one call to eBird a day besides the polls, failed or not: a call on every update would be more than its fair share.
+
+        While species in the memory have no scientific name, such as after an upgrade, the call asks for those, so a
+        new code eBird gives them can be followed. Otherwise it fetches the region's species list.
+        """
+        self._check_region()
+        if self.memory.extra_call_tried == today.isoformat():
+            return
+        unnamed = self.memory.unnamed()[:NAMES_PER_CALL]
+        yesterday = (today - timedelta(days=1)).isoformat()
+        if unnamed and self.memory.names_asked != yesterday:
+            self.memory.extra_call_tried = self.memory.names_asked = today.isoformat()
+            try:
+                names = await self._client.scientific_names(unnamed)
+            except EbirdAuthError:
+                raise
+            except EbirdError as err:
+                _LOGGER.warning("Couldn't read the scientific names of %s species, trying again in two days: %s", len(unnamed), err)
+                return
+            # A code eBird no longer knows gets an empty name, so it isn't asked for again.
+            self.memory.scientific.update({code: names.get(code, "") for code in unnamed})
+            return
+        await self._refresh_region(today)
+
+    def _check_region(self) -> None:
+        """Every update, whatever the day's call: a list is never compared against once the region has changed."""
+        if self.region is None:
             # First records are off: nothing to compare against.
             self.memory.region = self.memory.region_species = self.memory.region_latest = None
-            return
-        if not self.memory.region_due(region, today) or self.memory.region_tried == today.isoformat():
-            return
-        if region != self.memory.region:
+        elif self.region != self.memory.region:
             # Never compare against another region's list, even if the new one can't be read yet.
             self.memory.region_species = None
-        # One try a day, failed or not: a call to eBird on every update would be more than its fair share.
-        self.memory.region_tried = today.isoformat()
+
+    async def _refresh_region(self, today: date) -> None:
+        """The region's species list. A failure leaves yesterday's list in use."""
+        region = self.region
+        if region is None or not self.memory.region_due(region, today):
+            return
+        self.memory.extra_call_tried = today.isoformat()
         try:
             species = await self._client.region_species(region)
         except EbirdAuthError:
@@ -199,6 +241,9 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
         }
         if event.days_unseen is not None:
             data["days_unseen"] = event.days_unseen
+        if event.kind == NOTABLE:
+            data["first_in_region"] = event.first_in_region
+            data["days_since_notable"] = event.days_since_notable
         if event.kind == FIRST_OF_YEAR:
             last_year = self.memory.last_year_first_seen(observation.species)
             data["last_year"] = last_year.isoformat() if last_year else None
@@ -215,17 +260,23 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
             self.config_entry.async_create_background_task(self.hass, self._look_up_species(wanted), f"{DOMAIN} species")
 
     async def _look_up_species(self, wanted: dict[str, str]) -> None:
-        session = async_get_clientsession(self.hass)
+        """The background lookup: one at a time, and the sensors are updated when it's done."""
         try:
-            for species, scientific in wanted.items():
-                try:
-                    self.species[species] = await find_species(session, species, scientific)
-                except WikimediaError as err:
-                    _LOGGER.debug("Nothing on %s from Wikimedia this time: %s", species, err)
+            await self._fetch_species(wanted)
         finally:
             self._looking_up = False
         self._save()
         self.async_update_listeners()
+
+    async def _fetch_species(self, wanted: dict[str, str]) -> None:
+        session = async_get_clientsession(self.hass)
+        for species, scientific in wanted.items():
+            if species in self.species:
+                continue
+            try:
+                self.species[species] = await find_species(session, species, scientific)
+            except WikimediaError as err:
+                _LOGGER.debug("Nothing on %s from Wikimedia this time: %s", species, err)
 
     def _save(self) -> None:
         self._store.async_delay_save(self._stored, 10)

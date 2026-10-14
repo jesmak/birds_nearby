@@ -60,6 +60,17 @@ class EbirdClient:
             raise EbirdError(f"eBird sent the species of {region} in an unexpected format")
         return species
 
+    async def scientific_names(self, codes: list[str]) -> dict[str, str]:
+        """The scientific names of these species codes. A code eBird no longer knows is left out."""
+        taxa = await self._get("ref/taxonomy/ebird", {"species": ",".join(codes), "fmt": "json"})
+        if not isinstance(taxa, list):
+            raise EbirdError("eBird sent the taxonomy in an unexpected format")
+        return {
+            taxon["speciesCode"]: taxon["sciName"]
+            for taxon in taxa
+            if isinstance(taxon, dict) and isinstance(taxon.get("speciesCode"), str) and isinstance(taxon.get("sciName"), str)
+        }
+
     @staticmethod
     def _near(latitude: float, longitude: float, radius_km: int, locale: str) -> dict[str, Any]:
         return {

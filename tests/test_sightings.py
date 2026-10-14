@@ -254,3 +254,133 @@ def test_a_sighting_already_in_next_year_waits_for_it() -> None:
 
     assert kinds(events) == [(FIRST_OF_YEAR, "hoocro1")]
     assert memory.year_list == {"hoocro1": "2027-01-01"}
+
+
+def test_a_species_with_a_new_code_is_the_same_species() -> None:
+    # eBird's taxonomy update gives the hooded crow a new code. Its sightings come back under the new one.
+    crow = {"name": "Hooded Crow", "scientific": "Corvus cornix"}
+    memory = started(obs(species="hoocro1", checklist="S900080", **crow))
+
+    events = remember(
+        memory,
+        [
+            obs(species="hoocro2", checklist="S900080", **crow),
+            obs(species="hoocro2", checklist="S900081", observed="2026-10-11 09:00", **crow),
+        ],
+        [],
+        TODAY,
+        30,
+    )
+
+    assert events == [], "not a first of the year, nor a first record in the region"
+    assert memory.year_list == {"hoocro2": "2026-10-10"}
+    assert memory.last_seen == {"hoocro2": "2026-10-11"}
+    assert "hoocro2" in memory.region_species and "hoocro1" not in memory.region_species
+    assert set(memory.seen) == {"hoocro2/S900080", "hoocro2/S900081"}
+
+
+def test_a_split_keeps_the_memory_with_the_code_that_kept_the_name() -> None:
+    # The old code retires. One new code keeps the scientific name and the memory, the other is a new species.
+    memory = started(obs(species="hergul", name="Herring Gull", scientific="Larus argentatus", checklist="S900090"), region=("hergul",))
+
+    events = remember(
+        memory,
+        [
+            obs(species="euhgul1", name="European Herring Gull", scientific="Larus argentatus", checklist="S900091"),
+            obs(species="amhgul1", name="American Herring Gull", scientific="Larus smithsonianus", checklist="S900092"),
+        ],
+        [],
+        TODAY,
+        30,
+    )
+
+    assert kinds(events) == [(FIRST_OF_YEAR, "amhgul1"), (FIRST_IN_REGION, "amhgul1")]
+    assert set(memory.year_list) == {"euhgul1", "amhgul1"}
+    assert memory.year_list["euhgul1"] == "2026-10-10"
+
+
+def test_a_taxonomy_change_after_the_days_list_is_recognised_the_next_day() -> None:
+    # The day's list was fetched before eBird switched, and a gull came under its new code later that day.
+    memory = started(obs(species="hergul", scientific="Larus argentatus", checklist="S900093"), region=("hergul", "eurbla"))
+    remember(memory, [obs(species="euhgul1", scientific="Larus argentatus", checklist="S900094")], [], TODAY, 30)
+    assert memory.region_latest == ["hergul", "eurbla"], "the list fetched last stays as eBird sent it"
+
+    # The next day's list shows the old code gone, so its new codes are not first records that day.
+    memory.set_region_species("FI-99", ["amhgul1", "eurbla", "euhgul1"], date(2026, 10, 13))
+    events = remember(memory, [obs(species="amhgul1", scientific="Larus smithsonianus", checklist="S900095")], [], date(2026, 10, 13), 30)
+    assert kinds(events) == [(FIRST_OF_YEAR, "amhgul1")]
+
+
+def test_a_renamed_species_keeps_its_earliest_and_latest_dates() -> None:
+    memory = Memory.new(TODAY)
+    memory.year_list = {"old1": "2026-04-02", "new1": "2026-05-10"}
+    memory.last_seen = {"old1": "2026-10-01", "new1": "2026-09-01"}
+    memory.rename("old1", "new1")
+    assert memory.year_list == {"new1": "2026-04-02"}
+    assert memory.last_seen == {"new1": "2026-10-01"}
+
+
+def test_codes_without_a_scientific_name_are_listed_once() -> None:
+    memory = Memory.new(TODAY)
+    memory.year_list = {"a1": "2026-04-02", "b1": "2026-05-10"}
+    memory.past_years["2025"] = {"since": "2025-01-01", "first_seen": {"c1": "2025-05-01"}}
+    memory.scientific = {"a1": "Avis a", "b1": ""}
+    assert memory.unnamed() == ["c1"], "an empty name was asked for already"
+
+
+def test_a_notable_event_tells_a_new_rarity_from_one_seen_again() -> None:
+    memory = started(obs())
+    rarity = {"species": "palhar1", "name": "Pallid Harrier", "scientific": "Circus macrourus", "reviewed": True}
+
+    [notable, *_] = remember(memory, [obs(checklist="S900100", **rarity)], [obs(checklist="S900100", **rarity)], TODAY, 30)
+    assert (notable.kind, notable.first_in_region, notable.days_since_notable) == (NOTABLE, True, None)
+
+    # The same bird on another checklist two days later: not a first record any more, and notable two days ago.
+    later = {**rarity, "checklist": "S900101", "observed": "2026-10-12 08:00"}
+    [notable] = remember(memory, [obs(**later)], [obs(**later)], date(2026, 10, 12), 30)
+    assert (notable.first_in_region, notable.days_since_notable) == (False, 2)
+
+
+def test_new_codes_on_the_region_list_are_not_new_species_the_day_they_appear() -> None:
+    memory = Memory.new(TODAY)
+    memory.set_region_species("FI-99", ["eurbla", "hoocro1"], TODAY)
+    memory.set_region_species("FI-99", ["eurbla", "hoocro1", "gretit1"], date(2026, 10, 13))
+    assert memory.region_species == ["eurbla", "hoocro1"], "an ordinary day compares against the day before"
+
+    # A code left the list: eBird's taxonomy changed overnight.
+    memory.set_region_species("FI-99", ["eurbla", "gretit1", "hoocro2"], date(2026, 10, 14))
+    assert memory.region_species == ["eurbla", "gretit1", "hoocro1", "hoocro2"]
+
+
+def test_a_memory_from_before_scientific_names_loads() -> None:
+    stored = started(obs()).as_dict()
+    del stored["scientific"]
+    assert Memory.from_dict(stored).scientific == {}
+
+
+def test_a_late_checklist_is_not_notable_before_it_was_seen() -> None:
+    memory = started(obs())
+    rarity = {"species": "palhar1", "name": "Pallid Harrier", "scientific": "Circus macrourus", "reviewed": True}
+    remember(memory, [], [obs(checklist="S900110", observed="2026-10-12 08:00", **rarity)], TODAY, 30)
+
+    [notable] = remember(memory, [], [obs(checklist="S900111", observed="2026-10-09 08:00", **rarity)], TODAY, 30)
+    assert notable.days_since_notable == 0
+    assert memory.notable_seen["palhar1"] == "2026-10-12", "the newest stays"
+
+
+def test_a_rarity_seen_before_an_upgrade_is_not_new_after_it() -> None:
+    # 1.1.0 kept no dates of notable sightings. The checklists it handled count once they come again.
+    rarity = {"species": "palhar1", "name": "Pallid Harrier", "scientific": "Circus macrourus", "reviewed": True}
+    memory = started(obs(checklist="S900120", **rarity))
+    memory.notable_seen = {}
+    remember(memory, [], [obs(checklist="S900120", **rarity)], TODAY, 30)
+
+    events = remember(memory, [], [obs(checklist="S900121", observed="2026-10-12 08:00", **rarity)], TODAY, 30)
+    assert next(event for event in events if event.kind == NOTABLE).days_since_notable == 2
+
+
+def test_the_day_of_the_extra_call_carries_over_from_1_1_0() -> None:
+    stored = Memory.new(TODAY).as_dict()
+    del stored["extra_call_tried"]
+    stored["region_tried"] = "2026-10-12"
+    assert Memory.from_dict(stored).extra_call_tried == "2026-10-12"
