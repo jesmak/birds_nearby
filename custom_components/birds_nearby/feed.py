@@ -15,7 +15,7 @@ from typing import Any
 from homeassistant.util import dt as dt_util
 
 from .api import distance_km
-from .pictures import Picture
+from .pictures import Picture, SpeciesInfo
 from .sightings import Observation
 
 COORDINATE_DECIMALS = 5
@@ -30,6 +30,12 @@ NOTABLE_COLOR = "#d84315"
 # Closer to the area's centre than this, a direction means nothing.
 CENTRE_KM = 0.1
 
+# A place fades with the age of its newest sighting, down to this at the end of the recent days.
+OLDEST_OPACITY = 0.4
+
+# Shown after the species in the popup. Least concern says nothing, and data deficient too little.
+SHOWN_IUCN = ("NT", "VU", "EN", "CR", "EW")
+
 TEXTS: dict[str, dict[str, str]] = {
     "en": {
         "species": "{count} species",
@@ -39,6 +45,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "unreviewed": "not yet reviewed",
         "distance": "{km} km {direction}",
         "centre": "At the centre",
+        "hotspot_link": "Hotspot on eBird",
     },
     "fi": {
         "species": "{count} lajia",
@@ -48,6 +55,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "unreviewed": "ei vielä tarkastettu",
         "distance": "{km} km {direction}",
         "centre": "Alueen keskellä",
+        "hotspot_link": "Havaintopaikka eBirdissä",
     },
 }
 
@@ -61,6 +69,7 @@ DIRECTIONS: dict[str, list[str]] = {
 @dataclass
 class Place:
     feature_id: str
+    location_id: str
     latitude: float
     longitude: float
     # The hotspot's name, or None for a personal location: its name is whatever the observer typed, often an address.
@@ -74,7 +83,7 @@ def places(observations: list[Observation]) -> list[Place]:
     for observation in sorted(observations, key=lambda item: item.observed, reverse=True):
         feature_id = f"location:{observation.location_id}"
         name = None if observation.personal else observation.location_name
-        place = by_id.setdefault(feature_id, Place(feature_id, observation.latitude, observation.longitude, name))
+        place = by_id.setdefault(feature_id, Place(feature_id, observation.location_id, observation.latitude, observation.longitude, name))
         # A species seen there more than once is listed once, by its newest sighting.
         if all(seen.species != observation.species for seen in place.observations):
             place.observations.append(observation)
@@ -84,14 +93,16 @@ def places(observations: list[Observation]) -> list[Place]:
 def features(
     observations: list[Observation],
     notable_keys: set[str],
-    pictures: dict[str, Picture],
+    species_info: dict[str, SpeciesInfo],
     centre: tuple[float, float],
     language: str,
+    recent_days: int,
+    now: datetime,
 ) -> list[dict[str, Any]]:
     """The map feed's GeoJSON features, a point per place.
 
-    A hotspot is titled with its name. A personal location is titled with where it is from
-    the area's centre, which is honest about what eBird knows of it.
+    A hotspot is titled with its name and links to its page on eBird. A personal location is titled
+    with where it is from the area's centre, which is honest about what eBird knows of it.
     """
     texts = TEXTS.get(language, TEXTS["en"])
     result: list[dict[str, Any]] = []
@@ -116,11 +127,12 @@ def features(
             "badge": str(len(species)),
             "subtitle": subtitle,
             "color": NOTABLE_COLOR if has_notable else BIRD_COLOR,
+            "opacity": opacity(species[0].observed, now, recent_days),
             "details": [
                 _row(
                     observation,
                     observation.key in notable_keys,
-                    pictures.get(observation.species),
+                    species_info.get(observation.species),
                     one_day,
                     texts,
                     language,
@@ -128,6 +140,11 @@ def features(
                 for observation in shown
             ],
         }
+        if place.hotspot_name:
+            properties["link"] = {
+                "url": f"https://ebird.org/hotspot/{place.location_id}",
+                "label": texts["hotspot_link"],
+            }
         result.append(
             {
                 "type": "Feature",
@@ -139,15 +156,23 @@ def features(
     return result
 
 
+def opacity(newest: datetime, now: datetime, recent_days: int) -> float:
+    """1 for a place with a sighting today, fading evenly to OLDEST_OPACITY at the end of the recent days."""
+    if recent_days <= 1:
+        return 1.0
+    days = (now.date() - newest.date()).days
+    return round(1 - (1 - OLDEST_OPACITY) * min(max(days, 0) / (recent_days - 1), 1), 2)
+
+
 def _row(
     observation: Observation,
     notable: bool,
-    picture: Picture | None,
+    info: SpeciesInfo | None,
     time_only: bool,
     texts: dict[str, str],
     language: str,
 ) -> dict[str, Any]:
-    """A species: how many, when, whether notable, and its picture, which the popup shows large when tapped."""
+    """A species: how many, when, whether notable or threatened, and its picture, shown large when tapped."""
     parts = []
     if observation.count is not None:
         parts.append(texts["one_bird"] if observation.count == 1 else texts["birds"].format(count=observation.count))
@@ -156,9 +181,11 @@ def _row(
         parts.append(when)
     if notable:
         parts.append(texts["notable"] if observation.reviewed else f"{texts['notable']}, {texts['unreviewed']}")
+    if info and info.iucn in SHOWN_IUCN:
+        parts.append(info.iucn)
     row: dict[str, Any] = {"label": observation.name, "value": " · ".join(parts)}
-    if picture:
-        row["image"] = {"url": picture.url, "caption": caption(observation.name, picture)}
+    if info and info.picture:
+        row["image"] = {"url": info.picture.url, "caption": caption(observation.name, info.picture)}
     return row
 
 
@@ -173,15 +200,22 @@ def caption(name: str, picture: Picture) -> str:
 def from_centre(centre: tuple[float, float], latitude: float, longitude: float, language: str) -> str:
     """ "3,2 km lounaaseen" in Finnish, "3.2 km southwest" in English."""
     texts = TEXTS.get(language, TEXTS["en"])
-    km = distance_km(centre[0], centre[1], latitude, longitude)
+    km, bearing = distance_and_bearing(centre, latitude, longitude)
     if km < CENTRE_KM:
         return texts["centre"]
+    shown = f"{km:.1f}" if language == "en" else f"{km:.1f}".replace(".", ",")
+    return texts["distance"].format(km=shown, direction=direction(bearing, language))
+
+
+def distance_and_bearing(centre: tuple[float, float], latitude: float, longitude: float) -> tuple[float, float]:
+    """Kilometres from the area's centre, and the direction in degrees clockwise from north."""
     north = math.radians(latitude - centre[0])
     east = math.radians(longitude - centre[1]) * math.cos(math.radians((latitude + centre[0]) / 2))
-    bearing = math.degrees(math.atan2(east, north)) % 360
-    direction = DIRECTIONS.get(language, DIRECTIONS["en"])[round(bearing / 45) % 8]
-    shown = f"{km:.1f}" if language == "en" else f"{km:.1f}".replace(".", ",")
-    return texts["distance"].format(km=shown, direction=direction)
+    return distance_km(centre[0], centre[1], latitude, longitude), math.degrees(math.atan2(east, north)) % 360
+
+
+def direction(bearing: float, language: str) -> str:
+    return DIRECTIONS.get(language, DIRECTIONS["en"])[round(bearing / 45) % 8]
 
 
 def short_date(observed: datetime) -> str:

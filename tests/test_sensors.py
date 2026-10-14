@@ -97,18 +97,30 @@ async def test_a_rarity_on_the_next_poll(
     assert data["count"] == 1
     assert data["location"] == "Example Bay"
     assert data["reviewed"] is False
+    # Where it was, for automations that care only about what is close.
+    assert (data["distance_km"], data["bearing"], data["direction"]) == (0.2, 45, "northeast")
+    assert data["iucn_status"] is None, "Wikimedia knows none of the test species"
     assert [event.data["species_code"] for event in first_events] == ["palhar1"]
+    # The first year has no last year to compare with.
+    assert (first_events[0].data["last_year"], first_events[0].data["days_vs_last_year"]) == (None, None)
     assert [event.data["region"] for event in region_events] == [REGION]
 
     assert hass.states.get("sensor.birds_nearby_notable").state == "1"
-    assert hass.states.get("sensor.birds_nearby_year_list").state == "3"
+    year_list = hass.states.get("sensor.birds_nearby_year_list")
+    assert year_list.state == "3"
+    assert year_list.attributes["last_year_since"] is None
+    assert year_list.attributes["expected"] == []
+    assert year_list.attributes["species"][0] == {
+        "species_code": "palhar1",
+        "name": "Pallid Harrier",
+        "first_seen": NOW.date(),
+        "last_year": None,
+    }
     # The region's list is fetched once a day, not on every poll.
     assert not any("spplist" in str(call[1]) for call in ebird.mock_calls)
 
 
-async def test_the_memory_survives_a_restart(
-    enable_custom_integrations, hass: HomeAssistant, ebird: AiohttpClientMocker
-) -> None:
+async def test_the_memory_survives_a_restart(enable_custom_integrations, hass: HomeAssistant, ebird: AiohttpClientMocker) -> None:
     entry = await set_up(hass)
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()

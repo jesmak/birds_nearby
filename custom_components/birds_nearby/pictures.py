@@ -1,8 +1,9 @@
-"""Species pictures: the lead image of the species' English Wikipedia article, with its author and licence.
+"""What Wikimedia knows of a species: its conservation status, and the lead image of its English Wikipedia
+article with the picture's author and licence.
 
 eBird species code → Wikidata item (P3444, or the scientific name in P225 when eBird renamed
-the code and Wikidata hasn't caught up) → its English Wikipedia article → the article's lead
-image → that file's licence and author on Wikimedia Commons. A file that isn't on Commons isn't used.
+the code and Wikidata hasn't caught up), with its IUCN status (P141) → its English Wikipedia article → the
+article's lead image → that file's licence and author on Wikimedia Commons. A file that isn't on Commons isn't used.
 """
 
 from __future__ import annotations
@@ -29,6 +30,18 @@ THUMB_WIDTH = 500
 
 TIMEOUT = aiohttp.ClientTimeout(total=30)
 
+# Wikidata's items for the IUCN Red List categories, as the categories' own abbreviations.
+IUCN_STATUSES = {
+    "Q211005": "LC",
+    "Q719675": "NT",
+    "Q278113": "VU",
+    "Q11394": "EN",
+    "Q219127": "CR",
+    "Q239509": "EW",
+    "Q237350": "EX",
+    "Q3245245": "DD",
+}
+
 
 @dataclass(frozen=True)
 class Picture:
@@ -50,18 +63,38 @@ class Picture:
         return {"url": self.url, "page": self.page, "author": self.author, "licence": self.licence}
 
 
+@dataclass(frozen=True)
+class SpeciesInfo:
+    picture: Picture | None
+    # The IUCN Red List category, such as "VU", or None when Wikidata has none.
+    iucn: str | None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> SpeciesInfo:
+        picture = data.get("picture")
+        return cls(picture=Picture.from_dict(picture) if picture else None, iucn=data.get("iucn"))
+
+    def as_dict(self) -> dict[str, Any]:
+        return {"picture": self.picture.as_dict() if self.picture else None, "iucn": self.iucn}
+
+
 class WikimediaError(Exception):
     """Wikimedia couldn't be reached, or answered with something unexpected."""
 
 
-async def find_picture(session: aiohttp.ClientSession, species: str, scientific: str) -> Picture | None:
-    """The species' picture, or None when it has none that can be used."""
-    title = await _article_title(session, f"P3444={species}")
-    if title is None and scientific:
-        title = await _article_title(session, f'"P225={scientific}"')
-    if title is None:
-        return None
+async def find_species(session: aiohttp.ClientSession, species: str, scientific: str) -> SpeciesInfo:
+    """What Wikimedia knows of the species. Nothing at all when Wikidata has no item with an article for it."""
+    article = await _article(session, f"P3444={species}")
+    if article is None and scientific:
+        article = await _article(session, f'"P225={scientific}"')
+    if article is None:
+        return SpeciesInfo(picture=None, iucn=None)
+    title, iucn = article
+    return SpeciesInfo(picture=await _picture(session, title), iucn=iucn)
 
+
+async def _picture(session: aiohttp.ClientSession, title: str) -> Picture | None:
+    """The article's lead image, or None when it has none that can be used."""
     pages = await _get(
         session,
         WIKIPEDIA_API,
@@ -109,8 +142,8 @@ def plain_text(value: str) -> str:
     return " ".join(html.unescape(re.sub(r"<[^>]+>", "", value)).split())
 
 
-async def _article_title(session: aiohttp.ClientSession, statement: str) -> str | None:
-    """The English Wikipedia article of the Wikidata items with this statement.
+async def _article(session: aiohttp.ClientSession, statement: str) -> tuple[str, str | None] | None:
+    """The English Wikipedia article of the Wikidata items with this statement, and that item's IUCN status.
 
     A species can have several: when a genus is split, Wikidata often keeps the old name's
     item with the article and adds one for the new name without it. The first with an article wins.
@@ -126,12 +159,27 @@ async def _article_title(session: aiohttp.ClientSession, statement: str) -> str 
     entities = await _get(
         session,
         WIKIDATA_API,
-        {"action": "wbgetentities", "ids": "|".join(items), "props": "sitelinks", "sitefilter": "enwiki"},
+        {"action": "wbgetentities", "ids": "|".join(items), "props": "sitelinks|claims", "sitefilter": "enwiki"},
     )
-    titles = (
-        entities.get("entities", {}).get(item, {}).get("sitelinks", {}).get("enwiki", {}).get("title") for item in items
+    for item in items:
+        entity = entities.get("entities", {}).get(item, {})
+        title = entity.get("sitelinks", {}).get("enwiki", {}).get("title")
+        if title:
+            return title, iucn_status(entity.get("claims", {}).get("P141", []))
+    return None
+
+
+def iucn_status(statements: list[dict[str, Any]]) -> str | None:
+    """The current category. An item keeps older assessments too, the current one ranked preferred."""
+    ranked = sorted(
+        (statement for statement in statements if statement.get("rank") != "deprecated"),
+        key=lambda statement: statement.get("rank") != "preferred",
     )
-    return next((title for title in titles if title), None)
+    for statement in ranked:
+        value = statement.get("mainsnak", {}).get("datavalue", {}).get("value", {})
+        if isinstance(value, dict) and value.get("id") in IUCN_STATUSES:
+            return IUCN_STATUSES[value["id"]]
+    return None
 
 
 async def _get(session: aiohttp.ClientSession, url: str, params: dict[str, Any]) -> dict[str, Any]:

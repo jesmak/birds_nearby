@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from custom_components.birds_nearby.feed import features, from_centre, short_time
-from custom_components.birds_nearby.pictures import Picture
+from datetime import datetime
+
+from custom_components.birds_nearby.feed import features, from_centre, opacity, short_time
+from custom_components.birds_nearby.pictures import Picture, SpeciesInfo
 from custom_components.birds_nearby.sightings import parse_observations
 
 from .conftest import LATITUDE, LONGITUDE, observation
@@ -13,9 +15,7 @@ def test_species_at_the_same_place_are_one_point() -> None:
     observations = parse_observations(
         [
             observation(),
-            observation(
-                species="gretit1", name="Great Tit", checklist="S900003", observed="2026-10-11 09:00", count=None
-            ),
+            observation(species="gretit1", name="Great Tit", checklist="S900003", observed="2026-10-11 09:00", count=None),
             observation(
                 species="hoocro1",
                 name="Hooded Crow",
@@ -28,11 +28,11 @@ def test_species_at_the_same_place_are_one_point() -> None:
             ),
         ]
     )
-    picture = Picture(
-        "https://upload.wikimedia.org/x.jpg", "https://commons.wikimedia.org/wiki/File:X.jpg", "A. Author", "CC BY 4.0"
-    )
+    picture = Picture("https://upload.wikimedia.org/x.jpg", "https://commons.wikimedia.org/wiki/File:X.jpg", "A. Author", "CC BY 4.0")
 
-    result = features(observations, {"hoocro1/S900002"}, {"gretit1": picture}, (LATITUDE, LONGITUDE), "fi")
+    species = {"gretit1": SpeciesInfo(picture, "LC"), "hoocro1": SpeciesInfo(None, "VU")}
+
+    result = features(observations, {"hoocro1/S900002"}, species, (LATITUDE, LONGITUDE), "fi", 7, datetime(2026, 10, 11, 18, 0))
     by_id = {feature["id"]: feature for feature in result}
 
     bay = by_id["location:L900001"]["properties"]
@@ -51,6 +51,8 @@ def test_species_at_the_same_place_are_one_point() -> None:
     ]
     assert "images" not in bay, "pictures are on the rows"
     assert bay["color"] == "#2e7d32"
+    assert bay["opacity"] == 1.0, "a sighting today"
+    assert bay["link"] == {"url": "https://ebird.org/hotspot/L900001", "label": "Havaintopaikka eBirdissä"}
 
     personal = by_id["location:L900002"]
     assert personal["geometry"]["coordinates"] == [25.6411, 60.9702], "drawn where it was reported"
@@ -59,10 +61,22 @@ def test_species_at_the_same_place_are_one_point() -> None:
     assert personal["properties"]["subtitle"] == "1 lajia · 10.10."
     assert personal["properties"]["details"] == [
         # One day: the date is in the subtitle and the row shows only the time.
-        {"label": "Hooded Crow", "value": "2 yksilöä · 08.15 · huomionarvoinen, ei vielä tarkastettu"}
+        {"label": "Hooded Crow", "value": "2 yksilöä · 08.15 · huomionarvoinen, ei vielä tarkastettu · VU"}
     ]
+    assert personal["properties"]["opacity"] == 0.9, "yesterday, of seven recent days"
+    assert "link" not in personal["properties"], "a personal location has no public page"
     assert personal["properties"]["color"] == "#d84315", "a place with a notable sighting stands out"
     assert len(result) == 2
+
+
+def test_places_fade_over_the_recent_days() -> None:
+    now = datetime(2026, 10, 11, 0, 5)
+    # Days, not hours: a checklist from late yesterday is a day old just after midnight.
+    assert opacity(datetime(2026, 10, 11, 0, 1), now, 7) == 1.0
+    assert opacity(datetime(2026, 10, 10, 23, 50), now, 7) == 0.9
+    assert opacity(datetime(2026, 10, 5, 8, 0), now, 7) == 0.4
+    assert opacity(datetime(2026, 9, 20, 8, 0), now, 7) == 0.4
+    assert opacity(datetime(2026, 10, 9, 8, 0), now, 1) == 1.0, "nothing to fade over"
 
 
 def test_distance_and_direction_from_the_centre() -> None:
@@ -103,3 +117,16 @@ def test_counts_in_each_language() -> None:
     [many] = parse_observations([observation(count=140)])
     assert _row(one, False, None, True, TEXTS["fi"], "fi") == {"label": "Eurasian Blackbird", "value": "1 yksilö"}
     assert _row(many, False, None, True, TEXTS["en"], "en")["value"] == "140 birds · 08:15"
+
+
+def test_only_threatened_statuses_are_shown_on_the_map() -> None:
+    from custom_components.birds_nearby.feed import TEXTS, _row
+
+    [one] = parse_observations([observation(count=1)])
+    for status, shown in (
+        ("LC", "1 bird · 08:15"),
+        ("DD", "1 bird · 08:15"),
+        ("NT", "1 bird · 08:15 · NT"),
+        (None, "1 bird · 08:15"),
+    ):
+        assert _row(one, False, SpeciesInfo(None, status), True, TEXTS["en"], "en")["value"] == shown

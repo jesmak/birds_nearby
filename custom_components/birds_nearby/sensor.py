@@ -11,11 +11,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 
 from .const import ATTRIBUTION, DOMAIN, MAP_FEED_VERSION
 from .coordinator import BirdsConfigEntry, BirdsCoordinator
 from .feed import features
-from .sightings import Observation
 
 
 async def async_setup_entry(
@@ -24,9 +24,7 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
-    async_add_entities(
-        [NotableSensor(coordinator), RecentSensor(coordinator), YearListSensor(coordinator), MapFeedSensor(coordinator)]
-    )
+    async_add_entities([NotableSensor(coordinator), RecentSensor(coordinator), YearListSensor(coordinator), MapFeedSensor(coordinator)])
 
 
 class BirdsSensor(CoordinatorEntity[BirdsCoordinator], SensorEntity):
@@ -50,24 +48,6 @@ class BirdsSensor(CoordinatorEntity[BirdsCoordinator], SensorEntity):
             configuration_url="https://ebird.org",
         )
 
-    def sighting(self, observation: Observation) -> dict[str, Any]:
-        picture = self.coordinator.pictures.get(observation.species)
-        item: dict[str, Any] = {
-            "species_code": observation.species,
-            "name": observation.name,
-            "scientific_name": observation.scientific,
-            "count": observation.count,
-            "observed": observation.observed.isoformat(timespec="minutes"),
-            # A personal location's name is whatever the observer typed, often an address, so only hotspots are named.
-            "location": None if observation.personal else observation.location_name,
-            "hotspot": not observation.personal,
-            "url": f"https://ebird.org/species/{observation.species}",
-        }
-        if picture:
-            item["picture"] = picture.url
-            item["picture_credit"] = picture.credit
-        return item
-
 
 class NotableSensor(BirdsSensor):
     """The species among eBird's notable observations of the last 30 days, each sighting in the attributes."""
@@ -86,7 +66,7 @@ class NotableSensor(BirdsSensor):
     def extra_state_attributes(self) -> dict[str, Any]:
         return {
             "sightings": [
-                {**self.sighting(observation), "valid": observation.valid, "reviewed": observation.reviewed}
+                {**self.coordinator.sighting(observation), "valid": observation.valid, "reviewed": observation.reviewed}
                 for observation in self.coordinator.data.notable
             ]
         }
@@ -109,7 +89,7 @@ class RecentSensor(BirdsSensor):
     def extra_state_attributes(self) -> dict[str, Any]:
         return {
             "days": self.coordinator.recent_days,
-            "species": [self.sighting(observation) for observation in self.coordinator.data.recent],
+            "species": [self.coordinator.sighting(observation) for observation in self.coordinator.data.recent],
         }
 
 
@@ -131,12 +111,23 @@ class YearListSensor(BirdsSensor):
     def extra_state_attributes(self) -> dict[str, Any]:
         memory = self.coordinator.memory
         newest_first = sorted(memory.year_list.items(), key=lambda item: item[1], reverse=True)
+        last_year = memory.last_year
         return {
             "year": memory.year,
             "since": date.fromisoformat(memory.year_started),
             "species": [
-                {"species_code": code, "name": memory.names.get(code, code), "first_seen": date.fromisoformat(first)}
+                {
+                    "species_code": code,
+                    "name": memory.names.get(code, code),
+                    "first_seen": date.fromisoformat(first),
+                    "last_year": memory.last_year_first_seen(code),
+                }
                 for code, first in newest_first
+            ],
+            "last_year_since": date.fromisoformat(last_year["since"]) if last_year else None,
+            "expected": [
+                {"species_code": code, "name": memory.names.get(code, code), "last_year": first}
+                for code, first in memory.expected(dt_util.now().date())
             ],
         }
 
@@ -156,9 +147,11 @@ class MapFeedSensor(BirdsSensor):
         return features(
             [*notable, *data.recent],
             {item.key for item in data.notable},
-            self.coordinator.pictures,
+            self.coordinator.species,
             (self.coordinator.latitude, self.coordinator.longitude),
             self.coordinator.language,
+            self.coordinator.recent_days,
+            dt_util.now(),
         )
 
     @property

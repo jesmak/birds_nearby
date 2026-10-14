@@ -14,6 +14,7 @@ from custom_components.birds_nearby.sightings import (
     Memory,
     parse_observations,
     remember,
+    same_day,
 )
 
 from .conftest import observation
@@ -53,9 +54,7 @@ def test_an_unexpected_observation_is_an_error() -> None:
 
 def test_the_first_poll_fills_the_lists_without_events() -> None:
     memory = Memory.new(TODAY)
-    events = remember(
-        memory, [obs(), obs(species="hoocro1", checklist="S900002")], [obs(checklist="S900003")], TODAY, 30
-    )
+    events = remember(memory, [obs(), obs(species="hoocro1", checklist="S900002")], [obs(checklist="S900003")], TODAY, 30)
 
     assert events == []
     assert memory.initialized
@@ -66,9 +65,7 @@ def test_the_first_poll_fills_the_lists_without_events() -> None:
 def test_a_species_new_this_year_is_its_first_of_the_year() -> None:
     memory = started(obs())
 
-    events = remember(
-        memory, [obs(), obs(species="hoocro1", checklist="S900002", observed="2026-10-11 09:00")], [], TODAY, 30
-    )
+    events = remember(memory, [obs(), obs(species="hoocro1", checklist="S900002", observed="2026-10-11 09:00")], [], TODAY, 30)
 
     assert kinds(events) == [(FIRST_OF_YEAR, "hoocro1")]
     assert memory.year_list["hoocro1"] == "2026-10-11"
@@ -117,9 +114,7 @@ def test_a_species_never_recorded_in_the_region_is_announced_once() -> None:
 
 def test_a_spuh_is_never_a_first_record() -> None:
     memory = started(obs())
-    events = remember(
-        memory, [obs(species="gull1", name="gull sp.", scientific="Larinae sp.", checklist="S900030")], [], TODAY, 30
-    )
+    events = remember(memory, [obs(species="gull1", name="gull sp.", scientific="Larinae sp.", checklist="S900030")], [], TODAY, 30)
     assert kinds(events) == [(FIRST_OF_YEAR, "gull1")]
 
 
@@ -128,9 +123,7 @@ def test_the_region_list_compared_against_is_the_one_from_the_day_before() -> No
     # Today's list already has the rarity, because its own checklist put it there.
     memory.set_region_species("FI-99", ["eurbla", "hoocro1", "palhar1"], date(2026, 10, 13))
 
-    events = remember(
-        memory, [obs(species="palhar1", scientific="Circus macrourus", checklist="S900040")], [], TODAY, 30
-    )
+    events = remember(memory, [obs(species="palhar1", scientific="Circus macrourus", checklist="S900040")], [], TODAY, 30)
 
     assert (FIRST_IN_REGION, "palhar1") in kinds(events)
 
@@ -150,6 +143,51 @@ def test_a_new_year_starts_an_empty_list_without_last_years_sightings() -> None:
     assert memory.year_started == "2027-01-01"
     assert memory.year_list == {"hoocro1": "2027-01-01"}
     assert kinds(events) == [(FIRST_OF_YEAR, "hoocro1")]
+    assert memory.past_years == {"2026": {"since": "2026-12-31", "first_seen": {"eurbla": "2026-12-30"}}}
+
+
+def test_a_late_december_checklist_goes_on_last_years_list() -> None:
+    memory = started(obs(observed="2026-12-30 10:00"), today=date(2026, 12, 31))
+    remember(memory, [], [], date(2027, 1, 1), 30)
+
+    remember(memory, [obs(species="gretit1", checklist="S900060", observed="2026-12-31 15:00")], [], date(2027, 1, 2), 30)
+
+    assert memory.past_years["2026"]["first_seen"] == {"eurbla": "2026-12-30", "gretit1": "2026-12-31"}
+    assert memory.year_list == {}
+
+
+def last_year(since: str, **first_seen: str) -> Memory:
+    memory = Memory.new(date(2027, 5, 1))
+    memory.past_years["2026"] = {"since": since, "first_seen": first_seen}
+    return memory
+
+
+def test_the_first_sighting_compared_with_last_year() -> None:
+    memory = last_year("2026-01-01", eurbla="2026-04-10")
+    assert memory.last_year_first_seen("eurbla") == date(2026, 4, 10)
+    assert memory.days_vs_last_year("eurbla", date(2027, 4, 21)) == 11
+    assert memory.days_vs_last_year("eurbla", date(2027, 4, 3)) == -7
+    assert memory.days_vs_last_year("hoocro1", date(2027, 4, 3)) is None, "not seen last year"
+
+
+def test_no_comparison_with_the_year_of_installation() -> None:
+    # The list started in October: a first date then is often only the day the list started.
+    memory = last_year("2026-10-12", eurbla="2026-10-12")
+    assert memory.last_year_first_seen("eurbla") == date(2026, 10, 12)
+    assert memory.days_vs_last_year("eurbla", date(2027, 4, 21)) is None
+
+
+def test_species_seen_by_now_last_year_but_not_yet_this_year() -> None:
+    # Expected also from a year that started late: what it saw by this date, it saw.
+    memory = last_year("2026-03-15", eurbla="2026-04-10", hoocro1="2026-03-20", gretit1="2026-05-02", comcra="2026-04-30")
+    memory.year_list = {"hoocro1": "2027-03-25"}
+    assert memory.expected(date(2027, 5, 1)) == [("eurbla", date(2026, 4, 10)), ("comcra", date(2026, 4, 30))]
+    assert Memory.new(date(2027, 5, 1)).expected(date(2027, 5, 1)) == [], "nothing to expect in the first year"
+
+
+def test_29_february_in_a_year_without_one() -> None:
+    assert same_day(date(2028, 2, 29), 2029) == date(2029, 2, 28)
+    assert same_day(date(2026, 3, 1), 2028) == date(2028, 3, 1)
 
 
 def test_observations_older_than_the_window_are_forgotten() -> None:

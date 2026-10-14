@@ -34,7 +34,8 @@ from .const import (
     MIN_SCAN_MINUTES,
 )
 from .exceptions import EbirdAuthError, EbirdError
-from .pictures import Picture, WikimediaError, find_picture
+from .feed import CENTRE_KM, direction, distance_and_bearing
+from .pictures import SpeciesInfo, WikimediaError, find_species
 from .sightings import BACK, FIRST_IN_REGION, FIRST_OF_YEAR, NOTABLE, Event, Memory, Observation, newest_first, remember
 
 _LOGGER = logging.getLogger(__name__)
@@ -85,10 +86,9 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
         self._client = EbirdClient(hass, entry.data[CONF_API_KEY])
         self._store = memory_store(hass, entry.entry_id)
         self.memory = Memory.new(dt_util.now().date())
-        # Species code: its picture. Species found to have none are tried again after a restart,
-        # so a fixed lookup or a new picture on Wikipedia gets its chance.
-        self.pictures: dict[str, Picture] = {}
-        self._no_picture: set[str] = set()
+        # Species code: what Wikimedia knows of it. Only species with a picture are stored: the others
+        # are looked up again after a restart, so a fixed lookup or a new picture on Wikipedia gets its chance.
+        self.species: dict[str, SpeciesInfo] = {}
         self._looking_up = False
         self._region_tried: date | None = None
 
@@ -96,7 +96,7 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
         stored = await self._store.async_load()
         if stored:
             self.memory = Memory.from_dict(stored.get("memory", {}))
-            self.pictures = {code: Picture.from_dict(data) for code, data in stored.get("pictures", {}).items()}
+            self.species = {code: SpeciesInfo.from_dict(data) for code, data in stored.get("species", {}).items()}
 
     async def _async_update_data(self) -> Sightings:
         today = dt_util.now().date()
@@ -130,7 +130,7 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
             since=since,
             updated=dt_util.now(),
         )
-        self._find_pictures([*sightings.notable, *sightings.recent])
+        self._find_species([*sightings.notable, *sightings.recent])
         return sightings
 
     async def _refresh_region(self, today: date) -> None:
@@ -156,10 +156,11 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
             return
         self.memory.set_region_species(region, species, today)
 
-    def event_data(self, event: Event) -> dict[str, Any]:
-        observation = event.observation
-        data: dict[str, Any] = {
-            "entry_id": self.config_entry.entry_id,
+    def sighting(self, observation: Observation) -> dict[str, Any]:
+        """A sighting as the sensors and events show it."""
+        km, bearing = distance_and_bearing((self.latitude, self.longitude), observation.latitude, observation.longitude)
+        info = self.species.get(observation.species)
+        item: dict[str, Any] = {
             "species_code": observation.species,
             "name": observation.name,
             "scientific_name": observation.scientific,
@@ -168,58 +169,61 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
             # A personal location's name is whatever the observer typed, often an address, so only hotspots are named.
             "location": None if observation.personal else observation.location_name,
             "hotspot": not observation.personal,
+            "distance_km": round(km, 1),
+            # At the centre, a direction means nothing.
+            "bearing": None if km < CENTRE_KM else round(bearing),
+            "direction": None if km < CENTRE_KM else direction(bearing, self.language),
+            "iucn_status": info.iucn if info else None,
+            "url": f"https://ebird.org/species/{observation.species}",
+        }
+        if info and info.picture:
+            item["picture"] = info.picture.url
+            item["picture_credit"] = info.picture.credit
+        return item
+
+    def event_data(self, event: Event) -> dict[str, Any]:
+        observation = event.observation
+        data: dict[str, Any] = {
+            "entry_id": self.config_entry.entry_id,
+            **self.sighting(observation),
             "notable": event.kind == NOTABLE,
             "reviewed": observation.reviewed,
-            "url": f"https://ebird.org/species/{observation.species}",
         }
         if event.days_unseen is not None:
             data["days_unseen"] = event.days_unseen
+        if event.kind == FIRST_OF_YEAR:
+            last_year = self.memory.last_year_first_seen(observation.species)
+            data["last_year"] = last_year.isoformat() if last_year else None
+            data["days_vs_last_year"] = self.memory.days_vs_last_year(observation.species, observation.observed.date())
         if event.kind == FIRST_IN_REGION:
             data["region"] = self.memory.region
-        if picture := self.pictures.get(observation.species):
-            data["picture"] = picture.url
-            data["picture_credit"] = picture.credit
         return data
 
-    def _find_pictures(self, observations: list[Observation]) -> None:
-        """Looks up the pictures of species not yet looked up, in the background, one at a time."""
-        wanted = {
-            observation.species: observation.scientific
-            for observation in observations
-            if observation.species not in self.pictures and observation.species not in self._no_picture
-        }
+    def _find_species(self, observations: list[Observation]) -> None:
+        """Looks up the species not yet looked up, in the background, one at a time."""
+        wanted = {observation.species: observation.scientific for observation in observations if observation.species not in self.species}
         if wanted and not self._looking_up:
             self._looking_up = True
-            self.config_entry.async_create_background_task(
-                self.hass, self._look_up_pictures(wanted), f"{DOMAIN} pictures"
-            )
+            self.config_entry.async_create_background_task(self.hass, self._look_up_species(wanted), f"{DOMAIN} species")
 
-    async def _look_up_pictures(self, wanted: dict[str, str]) -> None:
+    async def _look_up_species(self, wanted: dict[str, str]) -> None:
         session = async_get_clientsession(self.hass)
-        found = 0
         try:
             for species, scientific in wanted.items():
                 try:
-                    picture = await find_picture(session, species, scientific)
+                    self.species[species] = await find_species(session, species, scientific)
                 except WikimediaError as err:
-                    _LOGGER.debug("No picture for %s this time: %s", species, err)
-                    continue
-                if picture:
-                    self.pictures[species] = picture
-                    found += 1
-                else:
-                    self._no_picture.add(species)
+                    _LOGGER.debug("Nothing on %s from Wikimedia this time: %s", species, err)
         finally:
             self._looking_up = False
         self._save()
-        if found:
-            self.async_update_listeners()
+        self.async_update_listeners()
 
     def _save(self) -> None:
         self._store.async_delay_save(
             lambda: {
                 "memory": self.memory.as_dict(),
-                "pictures": {code: picture.as_dict() for code, picture in self.pictures.items()},
+                "species": {code: info.as_dict() for code, info in self.species.items() if info.picture},
             },
             10,
         )

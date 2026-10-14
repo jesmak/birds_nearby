@@ -102,6 +102,8 @@ class Memory:
     year_list: dict[str, str] = field(default_factory=dict)
     # Species code: the newest date it was seen, kept across years.
     last_seen: dict[str, str] = field(default_factory=dict)
+    # Earlier years' lists by year: {"since": the day the list started, "first_seen": {species code: date}}.
+    past_years: dict[str, dict[str, Any]] = field(default_factory=dict)
     # Observation key: its date. Only the last 30 days, which is all eBird can send again.
     seen: dict[str, str] = field(default_factory=dict)
     # Species code: the name eBird last gave it, in the language asked for.
@@ -141,6 +143,47 @@ class Memory:
     def region_due(self, region: str | None, today: date) -> bool:
         return region is not None and (region != self.region or self.region_fetched != today.isoformat())
 
+    @property
+    def last_year(self) -> dict[str, Any] | None:
+        return self.past_years.get(str(self.year - 1))
+
+    def last_year_first_seen(self, species: str) -> date | None:
+        last_year = self.last_year
+        first = last_year["first_seen"].get(species) if last_year else None
+        return date.fromisoformat(first) if first else None
+
+    def days_vs_last_year(self, species: str, seen_on: date) -> int | None:
+        """How many days later than last year the species was first seen, negative when earlier.
+
+        Only against a list that ran from 1 January: in the year of installation, a species' first date is
+        often only the day the list started.
+        """
+        last_year = self.last_year
+        first = self.last_year_first_seen(species)
+        if last_year is None or first is None or last_year["since"] != date(first.year, 1, 1).isoformat():
+            return None
+        return (seen_on - same_day(first, seen_on.year)).days
+
+    def expected(self, today: date) -> list[tuple[str, date]]:
+        """Species seen by this date last year but not yet this year, with last year's date, the earliest first."""
+        last_year = self.last_year
+        if last_year is None:
+            return []
+        found = [
+            (species, date.fromisoformat(first))
+            for species, first in last_year["first_seen"].items()
+            if species not in self.year_list and same_day(date.fromisoformat(first), today.year) <= today
+        ]
+        return sorted(found, key=lambda item: item[1])
+
+
+def same_day(day: date, year: int) -> date:
+    """The day in another year; 29 February becomes the 28th in a year without it."""
+    try:
+        return day.replace(year=year)
+    except ValueError:
+        return day.replace(year=year, day=28)
+
 
 def remember(
     memory: Memory,
@@ -154,6 +197,7 @@ def remember(
     The first poll only fills the memory from the last 30 days, without events.
     """
     if today.year != memory.year:
+        memory.past_years[str(memory.year)] = {"since": memory.year_started, "first_seen": memory.year_list}
         memory.year = today.year
         memory.year_started = date(today.year, 1, 1).isoformat()
         memory.year_list = {}
@@ -192,6 +236,9 @@ def remember(
 
         if is_new_this_year:
             memory.year_list[observation.species] = seen_on.isoformat()
+        elif (past := memory.past_years.get(str(seen_on.year))) and observation.species not in past["first_seen"]:
+            # A checklist of the last days of December that reached eBird after New Year.
+            past["first_seen"][observation.species] = seen_on.isoformat()
         if previous is None or seen_on.isoformat() > previous:
             memory.last_seen[observation.species] = seen_on.isoformat()
 
