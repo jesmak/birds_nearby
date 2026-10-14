@@ -25,3 +25,13 @@ def test_finnish_has_the_same_texts_and_placeholders_as_english() -> None:
     assert finnish.keys() == english.keys()
     for key, text in english.items():
         assert re.findall(r"\{\w+\}", finnish[key]) == re.findall(r"\{\w+\}", text), key
+
+
+def test_the_user_agent_names_the_released_version() -> None:
+    import json
+    from pathlib import Path
+
+    from custom_components.birds_nearby.const import USER_AGENT
+
+    manifest = json.loads(Path("custom_components/birds_nearby/manifest.json").read_text())
+    assert USER_AGENT.startswith(f"BirdsNearby/{manifest['version']} ")

@@ -82,8 +82,9 @@ def places(observations: list[Observation]) -> list[Place]:
     by_id: dict[str, Place] = {}
     for observation in sorted(observations, key=lambda item: item.observed, reverse=True):
         feature_id = f"location:{observation.location_id}"
-        name = None if observation.personal else observation.location_name
-        place = by_id.setdefault(feature_id, Place(feature_id, observation.location_id, observation.latitude, observation.longitude, name))
+        place = by_id.setdefault(
+            feature_id, Place(feature_id, observation.location_id, observation.latitude, observation.longitude, observation.hotspot_name)
+        )
         # A species seen there more than once is listed once, by its newest sighting.
         if all(seen.species != observation.species for seen in place.observations):
             place.observations.append(observation)
@@ -203,7 +204,8 @@ def from_centre(centre: tuple[float, float], latitude: float, longitude: float, 
     km, bearing = distance_and_bearing(centre, latitude, longitude)
     if km < CENTRE_KM:
         return texts["centre"]
-    shown = f"{km:.1f}" if language == "en" else f"{km:.1f}".replace(".", ",")
+    # Finnish formats only with Finnish texts: any other language gets the English ones.
+    shown = f"{km:.1f}".replace(".", ",") if language == "fi" else f"{km:.1f}"
     return texts["distance"].format(km=shown, direction=direction(bearing, language))
 
 
@@ -232,7 +234,7 @@ def clock(observed: datetime, language: str) -> str | None:
     """ "14.05" in Finnish, "14:05" in English, or None when the observer gave no time (eBird then sends midnight)."""
     if observed.hour == 0 and observed.minute == 0:
         return None
-    return f"{observed:%H:%M}" if language == "en" else f"{observed:%H.%M}"
+    return f"{observed:%H.%M}" if language == "fi" else f"{observed:%H:%M}"
 
 
 def local_iso(observed: datetime) -> str:

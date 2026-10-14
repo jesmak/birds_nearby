@@ -23,7 +23,7 @@ class EbirdClient:
 
     async def recent(self, latitude: float, longitude: float, radius_km: int, locale: str) -> list[Observation]:
         """The newest observation of each species within the radius, over the last 30 days."""
-        return parse_observations(await self._get("data/obs/geo/recent", self._near(latitude, longitude, radius_km, locale)))
+        return _observations(await self._get("data/obs/geo/recent", self._near(latitude, longitude, radius_km, locale)))
 
     async def notable(self, latitude: float, longitude: float, radius_km: int, locale: str) -> list[Observation]:
         """eBird's notable observations within the radius, over the last 30 days.
@@ -31,7 +31,7 @@ class EbirdClient:
         Only simple detail is asked for, which has no observer names.
         """
         params = {**self._near(latitude, longitude, radius_km, locale), "detail": "simple"}
-        return parse_observations(await self._get("data/obs/geo/recent/notable", params))
+        return _observations(await self._get("data/obs/geo/recent/notable", params))
 
     async def nearest_region(self, latitude: float, longitude: float) -> str | None:
         """The county of the nearest hotspot, or its region where eBird has no counties (Finland, for one).
@@ -82,6 +82,13 @@ class EbirdClient:
             raise EbirdError(f"eBird couldn't be reached: {err}") from err
         except ValueError as err:
             raise EbirdError(f"eBird sent something unexpected: {err}") from err
+
+
+def _observations(payload: Any) -> list[Observation]:
+    try:
+        return parse_observations(payload)
+    except ValueError as err:
+        raise EbirdError(f"eBird sent the observations in an unexpected format: {err}") from err
 
 
 def distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:

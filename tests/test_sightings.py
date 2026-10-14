@@ -78,6 +78,7 @@ def test_the_same_checklist_seen_again_is_not_new() -> None:
 
 def test_a_species_back_after_a_while() -> None:
     memory = started(obs(observed="2026-08-01 10:00"), today=date(2026, 8, 2))
+    remember(memory, [], [], date(2026, 10, 11), 30)
 
     events = remember(memory, [obs(checklist="S900009", observed="2026-10-11 07:30")], [], TODAY, 30)
 
@@ -102,10 +103,11 @@ def test_a_late_checklist_from_before_the_last_sighting_changes_nothing() -> Non
 
 def test_a_species_never_recorded_in_the_region_is_announced_once() -> None:
     memory = started(obs())
-    rarity = {"species": "palhar1", "name": "Pallid Harrier", "scientific": "Circus macrourus"}
+    rarity = {"species": "palhar1", "name": "Pallid Harrier", "scientific": "Circus macrourus", "reviewed": True}
 
     events = remember(memory, [obs(checklist="S900020", **rarity)], [obs(checklist="S900020", **rarity)], TODAY, 30)
     assert kinds(events) == [(NOTABLE, "palhar1"), (FIRST_OF_YEAR, "palhar1"), (FIRST_IN_REGION, "palhar1")]
+    assert all(event.notable for event in events), "every event of a notable sighting says so"
 
     # Another checklist with it, before the region's list has caught up.
     events = remember(memory, [], [obs(checklist="S900021", **rarity)], TODAY, 30)
@@ -143,7 +145,7 @@ def test_a_new_year_starts_an_empty_list_without_last_years_sightings() -> None:
     assert memory.year_started == "2027-01-01"
     assert memory.year_list == {"hoocro1": "2027-01-01"}
     assert kinds(events) == [(FIRST_OF_YEAR, "hoocro1")]
-    assert memory.past_years == {"2026": {"since": "2026-12-31", "first_seen": {"eurbla": "2026-12-30"}}}
+    assert memory.past_years == {"2026": {"since": "2026-12-01", "first_seen": {"eurbla": "2026-12-30"}}}
 
 
 def test_a_late_december_checklist_goes_on_last_years_list() -> None:
@@ -200,3 +202,55 @@ def test_observations_older_than_the_window_are_forgotten() -> None:
 def test_the_memory_survives_storage() -> None:
     memory = started(obs())
     assert Memory.from_dict(memory.as_dict()) == memory
+
+
+def test_an_unreviewed_rarity_counts_once_ebird_accepts_it() -> None:
+    memory = started(obs())
+    rarity = {"species": "palhar1", "name": "Pallid Harrier", "scientific": "Circus macrourus", "checklist": "S900030"}
+
+    events = remember(memory, [], [obs(**rarity)], TODAY, 30)
+    assert kinds(events) == [(NOTABLE, "palhar1")]
+    assert "palhar1" not in memory.year_list
+    assert remember(memory, [], [obs(**rarity)], TODAY, 30) == [], "still waiting, and the notable event isn't repeated"
+
+    events = remember(memory, [obs(**rarity, reviewed=True)], [obs(**rarity, reviewed=True)], TODAY, 30)
+    assert kinds(events) == [(FIRST_OF_YEAR, "palhar1"), (FIRST_IN_REGION, "palhar1")]
+    assert memory.year_list["palhar1"] == "2026-10-10"
+    assert memory.pending == []
+
+
+def test_a_rejected_rarity_is_forgotten_with_its_days() -> None:
+    memory = started(obs())
+    remember(memory, [], [obs(species="palhar1", checklist="S900031")], TODAY, 30)
+    assert memory.pending == ["palhar1/S900031"]
+
+    remember(memory, [], [], date(2026, 11, 20), 30)
+    assert memory.pending == []
+    assert "palhar1" not in memory.year_list
+
+
+def test_no_species_is_back_after_a_gap_in_the_polls() -> None:
+    # Nothing polled for longer than back_days: every species would look back.
+    memory = started(obs(observed="2026-08-01 10:00"), today=date(2026, 8, 2))
+
+    events = remember(memory, [obs(checklist="S900009", observed="2026-10-11 07:30")], [], TODAY, 30)
+
+    assert events == []
+    assert memory.last_seen["eurbla"] == "2026-10-11"
+    assert memory.polled == TODAY.isoformat()
+
+
+def test_a_list_started_in_january_reaches_back_to_new_year() -> None:
+    assert Memory.new(date(2027, 1, 5)).year_started == "2027-01-01", "the first poll reaches into December"
+    assert Memory.new(date(2027, 3, 15)).year_started == "2027-02-13"
+
+
+def test_a_sighting_already_in_next_year_waits_for_it() -> None:
+    memory = started(obs(observed="2026-12-30 10:00"), today=date(2026, 12, 31))
+    new_year = obs(species="hoocro1", checklist="S900070", observed="2027-01-01 00:30")
+
+    assert remember(memory, [new_year], [], date(2026, 12, 31), 30) == []
+    events = remember(memory, [new_year], [], date(2027, 1, 1), 30)
+
+    assert kinds(events) == [(FIRST_OF_YEAR, "hoocro1")]
+    assert memory.year_list == {"hoocro1": "2027-01-01"}

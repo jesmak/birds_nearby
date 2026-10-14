@@ -8,8 +8,9 @@ import pytest
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
+from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.common import async_capture_events
+from pytest_homeassistant_custom_component.common import async_capture_events, async_fire_time_changed
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
 from custom_components.birds_nearby.const import EBIRD_URL, EVENT_FIRST_IN_REGION, EVENT_FIRST_OF_YEAR, EVENT_NOTABLE
@@ -25,6 +26,7 @@ RARITY = observation(
     observed="2026-10-12 10:30",
     checklist="S900100",
     count=1,
+    reviewed=True,
 )
 
 
@@ -79,6 +81,7 @@ async def test_a_rarity_on_the_next_poll(
     enable_custom_integrations,
     hass: HomeAssistant,
     ebird: AiohttpClientMocker,
+    freezer: FrozenDateTimeFactory,
 ) -> None:
     entry = await set_up(hass)
     notable_events = async_capture_events(hass, EVENT_NOTABLE)
@@ -87,6 +90,7 @@ async def test_a_rarity_on_the_next_poll(
 
     ebird.clear_requests()
     answer(ebird, recent=[*RECENT, RARITY], notable=[RARITY])
+    freezer.tick(3600)
     await entry.runtime_data.async_refresh()
     await hass.async_block_till_done()
 
@@ -96,7 +100,8 @@ async def test_a_rarity_on_the_next_poll(
     assert data["name"] == "Pallid Harrier"
     assert data["count"] == 1
     assert data["location"] == "Example Bay"
-    assert data["reviewed"] is False
+    assert data["reviewed"] is True
+    assert data["notable"] is True
     # Where it was, for automations that care only about what is close.
     assert (data["distance_km"], data["bearing"], data["direction"]) == (0.2, 45, "northeast")
     assert data["iucn_status"] is None, "Wikimedia knows none of the test species"
@@ -139,22 +144,98 @@ async def test_a_refused_key_asks_for_a_new_one(
     aioclient_mock.get(f"{EBIRD_URL}/product/spplist/{REGION}", status=403)
     entry = birds_entry(hass)
 
-    assert not await hass.config_entries.async_setup(entry.entry_id)
+    assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 
-    assert entry.state is ConfigEntryState.SETUP_ERROR
+    assert hass.states.get("sensor.birds_nearby_recent").state == "unavailable"
     assert [flow["context"]["source"] for flow in hass.config_entries.flow.async_progress()] == ["reauth"]
 
 
 async def test_a_failing_region_list_is_tried_once_a_day(
-    enable_custom_integrations, hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
+    enable_custom_integrations, hass: HomeAssistant, aioclient_mock: AiohttpClientMocker, freezer: FrozenDateTimeFactory
 ) -> None:
     aioclient_mock.get(f"{EBIRD_URL}/product/spplist/{REGION}", status=500)
     answer(aioclient_mock)
     entry = await set_up(hass)
 
+    freezer.tick(3600)
     await entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+    # Not after a reload either, such as saving the options.
+    assert await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done()
 
     assert entry.runtime_data.last_update_success, "the sightings are still updated"
     assert sum("spplist" in str(call[1]) for call in aioclient_mock.mock_calls) == 1
+
+
+async def test_ebird_down_at_startup_is_not_retried_within_seconds(
+    enable_custom_integrations, hass: HomeAssistant, aioclient_mock: AiohttpClientMocker, freezer: FrozenDateTimeFactory
+) -> None:
+    aioclient_mock.get(f"{EBIRD_URL}/product/spplist/{REGION}", status=429)
+    aioclient_mock.get(f"{EBIRD_URL}/data/obs/geo/recent", status=429)
+    entry = birds_entry(hass)
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    freezer.tick(600)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    assert entry.state is ConfigEntryState.LOADED
+    assert hass.states.get("sensor.birds_nearby_recent").state == "unavailable"
+    assert sum(str(call[1]).startswith(EBIRD_URL) for call in aioclient_mock.mock_calls) == 2, "one try, no setup retries"
+
+
+async def test_a_refresh_by_hand_doesnt_poll_ebird_more_often_than_every_15_minutes(
+    enable_custom_integrations, hass: HomeAssistant, ebird: AiohttpClientMocker, freezer: FrozenDateTimeFactory
+) -> None:
+    assert await async_setup_component(hass, "homeassistant", {})
+    await set_up(hass)
+    ebird.clear_requests()
+    answer(ebird)
+
+    for _ in range(3):
+        freezer.tick(60)
+        await hass.services.async_call("homeassistant", "update_entity", {"entity_id": "sensor.birds_nearby_recent"}, blocking=True)
+        await hass.async_block_till_done()
+    assert not any(str(call[1]).startswith(EBIRD_URL) for call in ebird.mock_calls)
+
+    freezer.tick(15 * 60)
+    await hass.services.async_call("homeassistant", "update_entity", {"entity_id": "sensor.birds_nearby_recent"}, blocking=True)
+    await hass.async_block_till_done()
+    assert sum("geo/recent" in str(call[1]) for call in ebird.mock_calls) == 2, "recent and notable, once"
+
+
+async def test_a_reload_right_after_a_poll_keeps_its_memory(
+    enable_custom_integrations, hass: HomeAssistant, ebird: AiohttpClientMocker, freezer: FrozenDateTimeFactory
+) -> None:
+    entry = await set_up(hass)
+    events = async_capture_events(hass, EVENT_FIRST_OF_YEAR)
+    ebird.clear_requests()
+    answer(ebird, recent=[*RECENT, RARITY], notable=[RARITY])
+    freezer.tick(3600)
+    await entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+
+    # Within the delayed save's ten seconds.
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert [event.data["species_code"] for event in events] == ["palhar1"], "not fired again after the reload"
+    assert hass.states.get("sensor.birds_nearby_year_list").state == "3"
+
+
+async def test_an_unexpected_observation_fails_the_update_cleanly(
+    enable_custom_integrations, hass: HomeAssistant, ebird: AiohttpClientMocker, freezer: FrozenDateTimeFactory
+) -> None:
+    entry = await set_up(hass)
+    broken = observation()
+    del broken["obsDt"]
+    ebird.clear_requests()
+    answer(ebird, recent=[broken])
+    freezer.tick(3600)
+    await entry.runtime_data.async_refresh()
+
+    assert not entry.runtime_data.last_update_success
+    assert "unexpected format" in str(entry.runtime_data.last_exception)

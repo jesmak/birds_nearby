@@ -90,16 +90,24 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
         # are looked up again after a restart, so a fixed lookup or a new picture on Wikipedia gets its chance.
         self.species: dict[str, SpeciesInfo] = {}
         self._looking_up = False
-        self._region_tried: date | None = None
+        self._polled_at: datetime | None = None
 
-    async def _async_setup(self) -> None:
+    async def async_load(self) -> None:
         stored = await self._store.async_load()
         if stored:
-            self.memory = Memory.from_dict(stored.get("memory", {}))
+            self.memory = Memory.from_dict(stored["memory"])
             self.species = {code: SpeciesInfo.from_dict(data) for code, data in stored.get("species", {}).items()}
 
+    async def async_save(self) -> None:
+        """Writes the memory now, so a reload right after a poll can't lose it and fire its events again."""
+        await self._store.async_save(self._stored())
+
     async def _async_update_data(self) -> Sightings:
-        today = dt_util.now().date()
+        now = dt_util.now()
+        if self.data is not None and self._polled_at and now - self._polled_at < timedelta(minutes=MIN_SCAN_MINUTES):
+            # A refresh asked for by hand or an automation: eBird is never polled more often than this.
+            return self.data
+        today = now.date()
         locale = ebird_locale(self.hass.config.language)
         try:
             await self._refresh_region(today)
@@ -109,6 +117,7 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
             raise ConfigEntryAuthFailed(str(err)) from err
         except EbirdError as err:
             raise UpdateFailed(str(err)) from err
+        self._polled_at = now
 
         first_poll = not self.memory.initialized
         events = remember(self.memory, recent, notable, today, self.back_days)
@@ -140,13 +149,13 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
             # First records are off: nothing to compare against.
             self.memory.region = self.memory.region_species = self.memory.region_latest = None
             return
-        if not self.memory.region_due(region, today) or self._region_tried == today:
+        if not self.memory.region_due(region, today) or self.memory.region_tried == today.isoformat():
             return
         if region != self.memory.region:
             # Never compare against another region's list, even if the new one can't be read yet.
             self.memory.region_species = None
         # One try a day, failed or not: a call to eBird on every update would be more than its fair share.
-        self._region_tried = today
+        self.memory.region_tried = today.isoformat()
         try:
             species = await self._client.region_species(region)
         except EbirdAuthError:
@@ -166,8 +175,7 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
             "scientific_name": observation.scientific,
             "count": observation.count,
             "observed": observation.observed.isoformat(timespec="minutes"),
-            # A personal location's name is whatever the observer typed, often an address, so only hotspots are named.
-            "location": None if observation.personal else observation.location_name,
+            "location": observation.hotspot_name,
             "hotspot": not observation.personal,
             "distance_km": round(km, 1),
             # At the centre, a direction means nothing.
@@ -186,7 +194,7 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
         data: dict[str, Any] = {
             "entry_id": self.config_entry.entry_id,
             **self.sighting(observation),
-            "notable": event.kind == NOTABLE,
+            "notable": event.notable,
             "reviewed": observation.reviewed,
         }
         if event.days_unseen is not None:
@@ -220,10 +228,10 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
         self.async_update_listeners()
 
     def _save(self) -> None:
-        self._store.async_delay_save(
-            lambda: {
-                "memory": self.memory.as_dict(),
-                "species": {code: info.as_dict() for code, info in self.species.items() if info.picture},
-            },
-            10,
-        )
+        self._store.async_delay_save(self._stored, 10)
+
+    def _stored(self) -> dict[str, Any]:
+        return {
+            "memory": self.memory.as_dict(),
+            "species": {code: info.as_dict() for code, info in self.species.items() if info.picture},
+        }

@@ -139,8 +139,19 @@ class MapFeedSensor(BirdsSensor):
 
     def __init__(self, coordinator: BirdsCoordinator) -> None:
         super().__init__(coordinator, "map")
+        # Built once per update, for both the state and the attributes.
+        self._feed: list[dict[str, Any]] | None = None
+
+    def _handle_coordinator_update(self) -> None:
+        self._feed = None
+        super()._handle_coordinator_update()
 
     def _features(self) -> list[dict[str, Any]]:
+        if self._feed is None:
+            self._feed = self._build_features()
+        return self._feed
+
+    def _build_features(self) -> list[dict[str, Any]]:
         data = self.coordinator.data
         # The notable sightings of the same recent days, so the map shows one span of time.
         notable = [item for item in data.notable if item.observed.date() >= data.since]

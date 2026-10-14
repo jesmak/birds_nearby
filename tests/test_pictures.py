@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
@@ -10,6 +11,7 @@ from custom_components.birds_nearby.pictures import (
     COMMONS_API,
     WIKIDATA_API,
     WIKIPEDIA_API,
+    WikimediaError,
     find_species,
     iucn_status,
     plain_text,
@@ -93,3 +95,9 @@ def test_the_current_iucn_status() -> None:
 
 def test_plain_text() -> None:
     assert plain_text('<span class="x">Jane <b>Doe</b></span>\n') == "Jane Doe"
+
+
+async def test_an_unexpected_answer_is_a_wikimedia_error(hass: HomeAssistant, aioclient_mock: AiohttpClientMocker) -> None:
+    aioclient_mock.get(WIKIDATA_API, json={"query": ["not", "a", "dict"]})
+    with pytest.raises(WikimediaError):
+        await find_species(async_get_clientsession(hass), "exabir1", "Avis exempli")

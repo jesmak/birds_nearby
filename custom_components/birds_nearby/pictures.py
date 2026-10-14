@@ -84,13 +84,17 @@ class WikimediaError(Exception):
 
 async def find_species(session: aiohttp.ClientSession, species: str, scientific: str) -> SpeciesInfo:
     """What Wikimedia knows of the species. Nothing at all when Wikidata has no item with an article for it."""
-    article = await _article(session, f"P3444={species}")
-    if article is None and scientific:
-        article = await _article(session, f'"P225={scientific}"')
-    if article is None:
-        return SpeciesInfo(picture=None, iucn=None)
-    title, iucn = article
-    return SpeciesInfo(picture=await _picture(session, title), iucn=iucn)
+    try:
+        article = await _article(session, f"P3444={species}")
+        if article is None and scientific:
+            article = await _article(session, f'"P225={scientific}"')
+        if article is None:
+            return SpeciesInfo(picture=None, iucn=None)
+        title, iucn = article
+        return SpeciesInfo(picture=await _picture(session, title), iucn=iucn)
+    except (AttributeError, KeyError, TypeError) as err:
+        # The answers are read with .get() all the way down, which only holds while each level has the expected shape.
+        raise WikimediaError(f"Wikimedia sent something unexpected for {species}: {err!r}") from err
 
 
 async def _picture(session: aiohttp.ClientSession, title: str) -> Picture | None:

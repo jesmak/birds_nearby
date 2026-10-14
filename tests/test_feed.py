@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from custom_components.birds_nearby.feed import features, from_centre, opacity, short_time
+from custom_components.birds_nearby.feed import TEXTS, _row, caption, clock, features, from_centre, opacity, short_time
 from custom_components.birds_nearby.pictures import Picture, SpeciesInfo
 from custom_components.birds_nearby.sightings import parse_observations
 
@@ -96,8 +96,6 @@ def test_times_in_each_language() -> None:
 
 
 def test_a_long_author_is_shortened_in_the_popup_only() -> None:
-    from custom_components.birds_nearby.feed import caption
-
     author = "This picture was realized by A. Photographer by using a long lens on a tripod in the rain"
     picture = Picture("https://upload.wikimedia.org/x.jpg", "", author, "CC BY-SA 2.5")
 
@@ -111,8 +109,6 @@ def test_a_long_author_is_shortened_in_the_popup_only() -> None:
 
 
 def test_counts_in_each_language() -> None:
-    from custom_components.birds_nearby.feed import TEXTS, _row
-
     [one] = parse_observations([observation(count=1, observed="2026-10-11")])
     [many] = parse_observations([observation(count=140)])
     assert _row(one, False, None, True, TEXTS["fi"], "fi") == {"label": "Eurasian Blackbird", "value": "1 yksilö"}
@@ -120,8 +116,6 @@ def test_counts_in_each_language() -> None:
 
 
 def test_only_threatened_statuses_are_shown_on_the_map() -> None:
-    from custom_components.birds_nearby.feed import TEXTS, _row
-
     [one] = parse_observations([observation(count=1)])
     for status, shown in (
         ("LC", "1 bird · 08:15"),
@@ -130,3 +124,9 @@ def test_only_threatened_statuses_are_shown_on_the_map() -> None:
         (None, "1 bird · 08:15"),
     ):
         assert _row(one, False, SpeciesInfo(None, status), True, TEXTS["en"], "en")["value"] == shown
+
+
+def test_other_languages_get_the_english_formats() -> None:
+    [parsed] = parse_observations([observation(observed="2026-10-11 14:05")])
+    assert from_centre((60.0, 25.0), 60.05, 25.0, "de") == "5.6 km north"
+    assert clock(parsed.observed, "de") == "14:05"

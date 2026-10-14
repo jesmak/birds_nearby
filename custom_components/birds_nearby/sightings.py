@@ -38,6 +38,11 @@ class Observation:
         return f"{self.species}/{self.checklist}"
 
     @property
+    def hotspot_name(self) -> str | None:
+        """None for a personal location: its name is whatever the observer typed, often an address."""
+        return None if self.personal else self.location_name
+
+    @property
     def is_species(self) -> bool:
         # Spuhs ("gull sp."), slashes and hybrids are reported too. They never make a
         # first record in a region, so they are left out of that comparison.
@@ -80,6 +85,8 @@ def _parse(item: dict[str, Any]) -> Observation:
 class Event:
     kind: str
     observation: Observation
+    # Among eBird's notable observations, whatever the event.
+    notable: bool = False
     # Days since the species was last seen, for the back-after-a-while event.
     days_unseen: int | None = None
 
@@ -96,7 +103,7 @@ class Memory:
     """What the integration has learned since it was set up. Kept in its own storage."""
 
     year: int
-    # The day this year's list started: installation, or 1 January after that.
+    # The day this year's list started: as far back as the first poll reached, or 1 January after that.
     year_started: str
     # Species code: the date it was first seen this year.
     year_list: dict[str, str] = field(default_factory=dict)
@@ -106,6 +113,10 @@ class Memory:
     past_years: dict[str, dict[str, Any]] = field(default_factory=dict)
     # Observation key: its date. Only the last 30 days, which is all eBird can send again.
     seen: dict[str, str] = field(default_factory=dict)
+    # Notable observations seen but not yet reviewed: they count once eBird has accepted them.
+    pending: list[str] = field(default_factory=list)
+    # The day of the last successful poll. After a longer gap than back_days, any species would look back.
+    polled: str | None = None
     # Species code: the name eBird last gave it, in the language asked for.
     names: dict[str, str] = field(default_factory=dict)
     # The region's species list: the one compared against, and the one fetched last.
@@ -114,13 +125,16 @@ class Memory:
     region_species: list[str] | None = None
     region_latest: list[str] | None = None
     region_fetched: str | None = None
+    # The day the list was last tried, failed or not: one call a day at most, across restarts and reloads.
+    region_tried: str | None = None
     # Species already announced as a first record in the region, so a later checklist doesn't repeat it.
     region_announced: list[str] = field(default_factory=list)
     initialized: bool = False
 
     @classmethod
     def new(cls, today: date) -> Memory:
-        return cls(year=today.year, year_started=today.isoformat())
+        # The first poll reaches 30 days back, into this year or to its very start.
+        return cls(year=today.year, year_started=max(date(today.year, 1, 1), today - timedelta(days=WINDOW_DAYS)).isoformat())
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Memory:
@@ -204,27 +218,43 @@ def remember(
 
     region_known = set(memory.region_species or [])
     announced = set(memory.region_announced)
+    pending = set(memory.pending)
     notable_keys = {observation.key for observation in notable}
+    # A notable report counts for the lists only once eBird has reviewed and accepted it.
+    unconfirmed = {observation.key for observation in notable if not (observation.reviewed and observation.valid)}
+    # Every species seen while nobody was watching would look back after a while.
+    watched = memory.polled is not None and (today - date.fromisoformat(memory.polled)).days < back_days
     events: list[Event] = []
 
     # Oldest first, so a species seen on two new checklists is compared with the older one first.
     for observation in sorted([*recent, *notable], key=lambda item: item.observed):
         memory.names[observation.species] = observation.name
-        if observation.key in memory.seen:
-            continue
+        key = observation.key
         seen_on = observation.observed.date()
-        memory.seen[observation.key] = seen_on.isoformat()
+        if seen_on.year > memory.year:
+            # Already New Year where the bird was seen, not yet in Home Assistant's time zone.
+            continue
+        is_new = key not in memory.seen
+        if not is_new and (key not in pending or key in unconfirmed):
+            continue
+        memory.seen[key] = seen_on.isoformat()
+        notable_here = key in notable_keys
+        if is_new and notable_here and memory.initialized:
+            events.append(Event(NOTABLE, observation, notable=True))
+        if key in unconfirmed:
+            pending.add(key)
+            continue
+        pending.discard(key)
+
         is_new_this_year = seen_on.year == memory.year and observation.species not in memory.year_list
         previous = memory.last_seen.get(observation.species)
         days_unseen = (seen_on - date.fromisoformat(previous)).days if previous else None
 
         if memory.initialized:
-            if observation.key in notable_keys:
-                events.append(Event(NOTABLE, observation))
             if is_new_this_year:
-                events.append(Event(FIRST_OF_YEAR, observation))
-            if days_unseen is not None and days_unseen >= back_days:
-                events.append(Event(BACK, observation, days_unseen))
+                events.append(Event(FIRST_OF_YEAR, observation, notable=notable_here))
+            if watched and days_unseen is not None and days_unseen >= back_days:
+                events.append(Event(BACK, observation, notable=notable_here, days_unseen=days_unseen))
             if (
                 memory.region_species is not None
                 and observation.is_species
@@ -232,7 +262,7 @@ def remember(
                 and observation.species not in announced
             ):
                 announced.add(observation.species)
-                events.append(Event(FIRST_IN_REGION, observation))
+                events.append(Event(FIRST_IN_REGION, observation, notable=notable_here))
 
         if is_new_this_year:
             memory.year_list[observation.species] = seen_on.isoformat()
@@ -244,7 +274,10 @@ def remember(
 
     oldest = (today - timedelta(days=WINDOW_DAYS + 2)).isoformat()
     memory.seen = {key: seen_on for key, seen_on in memory.seen.items() if seen_on >= oldest}
+    # A report eBird rejected, or never reviewed within its 30 days, is forgotten with them.
+    memory.pending = sorted(key for key in pending if key in memory.seen)
     memory.region_announced = sorted(announced)
+    memory.polled = today.isoformat()
     memory.initialized = True
     return events
 
