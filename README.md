@@ -1,47 +1,40 @@
 # Birds Nearby for Home Assistant
 
-A Home Assistant integration for bird sightings within a radius of your home, with the notable ones, your year list
-and first sightings of the year, and the sightings on a map. Sightings come from [eBird](https://ebird.org), species
-pictures from Wikipedia and Wikimedia Commons.
+A Home Assistant integration for bird sightings within an area you choose, with the notable ones, your year list and
+first sightings of the year, and the sightings on a map.
 
-[![GitHub Release][releases-shield]][releases] [![GitHub Release Date][release-date-shield]][releases]
+[![GitHub Release][releases-shield]][releases] [![GitHub Release Date][release-date-shield]][releases] [![HACS][hacs-shield]][hacs] [![License][license-shield]](LICENSE)
 
-[![HACS][hacs-shield]][hacs] [![Home Assistant][home-assistant-shield]][home-assistant] [![License][license-shield]](LICENSE)
-
-![Project Maintenance][maintenance-shield] [![GitHub Activity][commits-shield]][commits] [![Open bugs][bugs-shield]][bugs] [![Open enhancements][enhancements-shield]][enhancements]
-
-This is an unofficial integration, not affiliated with or endorsed by eBird or the Cornell Lab of Ornithology. Every
-user requests and enters an eBird API key of their own, and is bound by eBird's terms for it. If eBird objects to
-the integration, it will be withdrawn.
-
-## Support
-
-Hey dude! Help me out for a couple of :beers: or a :coffee:!
-
-[![coffee](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](https://www.buymeacoffee.com/jesmak)
+<img src="https://raw.githubusercontent.com/jesmak/birds_nearby/main/docs/images/dashboard-light.png#gh-light-mode-only" width="1280" alt="A dashboard around Tampere, with a map of eight places where birds were seen, older ones fainter and one with a notable sighting in orange, the year list and recent species counts, and lists of the notable sighting, the newest species of the year compared with last year and the species seen by this date last year but not yet">
+<img src="https://raw.githubusercontent.com/jesmak/birds_nearby/main/docs/images/dashboard-dark.png#gh-dark-mode-only" width="1280" alt="A dashboard around Tampere, with a map of eight places where birds were seen, older ones fainter and one with a notable sighting in orange, the year list and recent species counts, and lists of the notable sighting, the newest species of the year compared with last year and the species seen by this date last year but not yet">
 
 ## What is it?
 
-- **Notable nearby:** eBird's notable observations within the radius, meaning what eBird's regional filters and
-  reviewers consider rare or out of season there. Records not yet reviewed are marked as such.
-- **Recent nearby:** the species seen within the radius in the last few days, with the newest sighting of each.
-- **Year list:** every species seen within the radius this year, as a sensor with long term statistics. From the
-  second year, each species' first date last year, and the species seen by this date last year but not yet this
-  year.
-- **Events** for a notable sighting, a species' first sighting of the year, a species back after a while, and the
-  first record of a species in your county or region. You decide in your own automations what deserves a
-  notification.
-- **A map feed** for [ha-map-card](https://github.com/nathan-gs/ha-map-card) through
-  [ha-map-card-plugin-map-feed](https://github.com/jesmak/ha-map-card-plugin-map-feed): a point for each place birds
-  were seen, listing the species with their counts, dates and pictures. Older places fade.
-- **Species names in Home Assistant's language**, where eBird has them, otherwise in English.
+Birds Nearby follows the bird sightings that birdwatchers report to [eBird](https://ebird.org) within a radius of a
+point you choose, usually your home. It shows the species seen there in the last few days, and the notable ones,
+meaning what eBird's regional filters and reviewers consider rare or out of season there. It keeps a year list of its
+own and remembers earlier years, so from the second year each species' first sighting can be compared with last
+year's, and you can see which species were here by this date last year but haven't been seen yet.
+
+When something new turns up, it fires an event. That can be a notable sighting, a species' first sighting of the year, a
+species back after a while, or the first record of a species in your county or region. Your own automations decide what
+deserves a notification, and every event says how far away and in which direction the bird was seen.
+
+The sightings are also a map feed for [ha-map-card](https://github.com/nathan-gs/ha-map-card) through
+[ha-map-card-plugin-map-feed](https://github.com/jesmak/ha-map-card-plugin-map-feed). Each place birds were seen is
+a point, its popup listing the species with their counts, times and pictures from Wikipedia. Species names follow
+Home Assistant's language where eBird has them, otherwise they are in English.
 
 ### What it can't do
 
 eBird's API looks back 30 days at most, so anything that needs a longer memory is counted from the day the
-integration is set up. The year list and first sightings of the year start at installation, and the first year is
-incomplete. The first update fills the lists from the last 30 days without firing any events. First sightings are
-compared with last year's only once a year's list has run from 1 January.
+integration is set up. The year list and first sightings of the year start 30 days before installation, and the
+first year is incomplete. The first update fills the lists from those 30 days without firing any events. First
+sightings are compared with last year's only once a year's list has run from 1 January.
+
+When eBird updates its taxonomy, usually in October, a species that gets a new code looks like a new species. Its
+first sighting under the new code fires a first of the year and a first record in the region, and the year list
+counts it twice until the next year.
 
 The radius is at most 50 km, which is eBird's limit. Birds only.
 
@@ -64,27 +57,50 @@ You need an eBird API key first. See [Getting an eBird API key](#getting-an-ebir
 3. Restart Home Assistant
 4. Add the integration in Settings › Devices & services
 
+### Getting an eBird API key
+
+Every user needs an eBird API key of their own. Sign in with your eBird account, go to
+[eBird Data Access](https://ebird.org/data/download) and request access to the API with the form below.
+
+eBird's [data terms](https://www.birds.cornell.edu/home/ebird-data-access-terms-of-use/) let you use the data only
+for the purpose you state in the request, so describe your use as it is. For a private person using this
+integration at home, something like this:
+
+- **Organization:** None
+- **Project title:** Home Assistant: birds near my home
+- **Project type:** General
+- **Use cases:** Personal use
+- **Licensing checkbox** (use exceeds limits or is commercial): leave it unticked.
+- **Description:**
+
+  > I use the open-source Home Assistant integration Birds Nearby (https://github.com/jesmak/birds_nearby) to see
+  > recent and notable bird observations near my home in my own Home Assistant. This is personal, non-commercial use.
+  > The data is shown only to me and my household and is not published or shared.
+
+Don't share your key with anyone. eBird's [API terms](https://www.birds.cornell.edu/home/ebird-api-terms-of-use/)
+make you responsible for everything done with it.
+
 ## Settings
 
 Adding the integration asks for a name, your eBird API key and the area, which is a point on the map, your home by
 default, and a radius around it. The key is checked with eBird before it is saved. Add the integration again for
 another area, such as a summer cottage.
 
-| Name         | Type     | Description                                                     | Default      |
-| ------------ | -------- | --------------------------------------------------------------- | ------------ |
-| Name         | string   | The name of the area's device, and of its sensors               | Birds Nearby |
-| eBird API key| password | Your own key                                                    |              |
-| Area         | location | The centre and the radius, 1–50 km                               | Home, 25 km  |
+| Name          | Type     | Description                                       | Default      |
+| ------------- | -------- | ------------------------------------------------- | ------------ |
+| Name          | string   | The name of the area's device, and of its sensors | Birds Nearby |
+| eBird API key | password | Your own key                                      |              |
+| Area          | location | The centre and the radius, 1–50 km                | Home, 25 km  |
 
 If eBird stops accepting the key, Home Assistant asks for a new one.
 
 ### Options
 
-| Name                     | Description                                                                                    | Default |
-| ------------------------ | ---------------------------------------------------------------------------------------------- | ------- |
-| Update interval          | Minutes between updates, at least 15                                                           | 60      |
-| Recent days              | How many of the latest days the recent sensor and the map show, 1–30                           | 7       |
-| Back after               | A species unseen for this many days fires an event when it is seen again, 7–365               | 30      |
+| Name                     | Description                                                                                                           | Default                  |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| Update interval          | Minutes between updates, at least 15                                                                                  | 60                       |
+| Recent days              | How many of the latest days the recent sensor and the map show, 1–30                                                  | 7                        |
+| Back after               | A species unseen for this many days fires an event when it is seen again, 7–365                                       | 30                       |
 | Region for first records | The eBird county or region a sighting is compared with, such as `US-NY-109` or `FI-02`. Empty turns first records off | From the nearest hotspot |
 
 When the area is added, the region is taken from the nearest eBird hotspot. That is its county where eBird has
@@ -121,22 +137,54 @@ term statistics, so a chart of it shows the list growing through the year and st
 
 ## Events
 
-| Event                          | Fired when                                                                  |
-| ------------------------------ | --------------------------------------------------------------------------- |
-| `birds_nearby_notable`         | A notable observation the integration hasn't seen before                    |
-| `birds_nearby_first_of_year`   | A species not yet on this year's list                                       |
-| `birds_nearby_back`            | A species unseen for the set number of days. `days_unseen` says how long    |
-| `birds_nearby_first_in_region` | A species never recorded in the region before. `region` names it            |
+| Event                          | Fired when                                                               |
+| ------------------------------ | ------------------------------------------------------------------------ |
+| `birds_nearby_notable`         | A notable observation the integration hasn't seen before                 |
+| `birds_nearby_first_of_year`   | A species not yet on this year's list                                    |
+| `birds_nearby_back`            | A species unseen for the set number of days. `days_unseen` says how long |
+| `birds_nearby_first_in_region` | A species never recorded in the region before. `region` names it         |
 
-The event data is a sighting as above, with `entry_id`, `notable` and `reviewed`. A first of the year also has
+The event data is a sighting as above, with `entry_id`, `notable` (whether it is among eBird's notable
+observations, whatever the event) and `reviewed`. A first of the year also has
 `last_year`, the day the species was first seen last year, and `days_vs_last_year`, how many days later it is this
 year (negative when earlier). `days_vs_last_year` is empty when last year's list didn't run from 1 January, since
-a first date then is often only the day the list started. A sighting is new to the
-integration when its species and checklist are, since eBird gives no time a record was added. Records reach the API
-only within 30 days of the sighting.
+a first date then is often only the day the list started. A sighting is new to the integration when its species and
+checklist are, since eBird gives no time a record was added. Records reach the API only within 30 days of the
+sighting.
+
+A notable sighting not yet reviewed fires `birds_nearby_notable` at once, with `reviewed` false. It goes on the year
+list, and can be a first of the year or a first record in the region, only once eBird's reviewers have accepted it.
+A report they reject is forgotten.
+
+After a gap in the updates longer than "Back after", such as Home Assistant being off or eBird refusing the key, no
+species counts as back on the first update, since any of them would look like it.
 
 The first record in a region is compared with the region's species list from the day before, so the sighting itself
 can't hide it. Spuhs ("gull sp."), slashes and hybrids are never first records.
+
+## The map
+
+The map sensor is a map feed in the [Map Feed format](https://github.com/jesmak/ha-map-card-plugin-map-feed/blob/main/docs/map-feed-format.md).
+Draw it with ha-map-card and the map feed plugin, as in the [examples](#the-sightings-on-a-map).
+
+Each place birds were seen in the recent days is one point, its badge the number of species. The popup lists the
+species, newest first, with how many birds were counted and when, each with a small picture that opens large when
+tapped. When every species at a place was seen on the same day, the date is shown once, under the title. A place
+with a notable sighting is drawn in orange, its notable species listed first. A species near threatened or worse on
+the IUCN Red List has its category after it (`NT`, `VU`, `EN`, `CR` or `EW`).
+
+A place fades with the age of its newest sighting. It is drawn in full with a sighting today, and fainter each day
+until the last of the recent days. A hotspot's popup ends with a link to its page on eBird. Fading and the link need
+version 1.2 of the map feed plugin, and the pictures 1.1. Older versions leave them out.
+
+Every place is drawn where it was reported. A hotspot, a public place shared by eBird's observers, is titled with its
+name, with its distance and direction from the area's centre below it. A personal location, one an observer pinned
+for themselves, is titled with its distance and direction instead ("3.2 km southwest"). Its own name is whatever
+the observer typed, often an address, so it isn't shown.
+
+## Examples
+
+### A rarity nearby
 
 ```yaml
 automation:
@@ -155,6 +203,10 @@ automation:
             {{ trigger.event.data.distance_km }} km {{ trigger.event.data.direction or '' }}
 ```
 
+### The first of the year close by, compared with last year
+
+The phone notification shows the bird's picture.
+
 ```yaml
 automation:
   - alias: First of the year, close by
@@ -171,17 +223,15 @@ automation:
           message: >
             First this year
             {%- if trigger.event.data.days_vs_last_year is not none %},
-            {{ trigger.event.data.days_vs_last_year | abs }} days
+            {{ trigger.event.data.days_vs_last_year | abs }}
+            {{ 'day' if trigger.event.data.days_vs_last_year | abs == 1 else 'days' }}
             {{ 'later' if trigger.event.data.days_vs_last_year > 0 else 'earlier' }} than last year
             {%- endif %}
           data:
             image: "{{ trigger.event.data.picture }}"
 ```
 
-## The map
-
-The map sensor is a map feed in the [Map Feed format](https://github.com/jesmak/ha-map-card-plugin-map-feed/blob/main/docs/map-feed-format.md).
-Draw it with ha-map-card and the map feed plugin:
+### The sightings on a map
 
 ```yaml
 type: custom:map-card
@@ -196,45 +246,11 @@ plugins:
       show_area: true
 ```
 
-Each place birds were seen in the recent days is one point, its badge the number of species. The popup lists the
-species, newest first, with how many birds were counted and when, each with a small picture that opens large when
-tapped. When every species at a place was seen on the same day, the date is shown once, under the title. A place
-with a notable sighting is drawn in orange, its notable species listed first. A species near threatened or worse on
-the IUCN Red List has its category after it (`NT`, `VU`, `EN`, `CR` or `EW`).
-
-A place fades with the age of its newest sighting. It is drawn in full with a sighting today, and fainter each day
-until the last of the recent days. A hotspot's popup ends with a link to its page on eBird. Fading and the link need version
-1.2 of the map feed plugin, and the pictures 1.1. Older versions leave them out.
-
-Every place is drawn where it was reported. A hotspot, a public place shared by eBird's observers, is titled with its
-name, with its distance and direction from the area's centre below it. A personal location, one an observer pinned
-for themselves, is titled with its distance and direction instead ("3.2 km southwest"). Its own name is whatever
-the observer typed, often an address, so it isn't shown.
-
-## Getting an eBird API key
-
-Every user needs an eBird API key of their own. Sign in with your eBird account, go to
-[eBird Data Access](https://ebird.org/data/download) and request access to the API with the form below.
-
-eBird's [data terms](https://www.birds.cornell.edu/home/ebird-data-access-terms-of-use/) let you use the data only
-for the purpose you state in the request, so describe your use as it is. For a private person using this
-integration at home, something like this:
-
-- **Organization:** None
-- **Project title:** Home Assistant: birds near my home
-- **Project type:** General
-- **Use cases:** Personal use
-- **Licensing checkbox** (use exceeds limits or is commercial): leave it unticked.
-- **Description:**
-
-  > I use the open-source Home Assistant integration Birds Nearby (https://github.com/jesmak/birds_nearby) to see
-  > recent and notable bird observations near my home in my own Home Assistant. This is personal, non-commercial use.
-  > The data is shown only to me and my household and is not published or shared.
-
-Don't share your key with anyone. eBird's [API terms](https://www.birds.cornell.edu/home/ebird-api-terms-of-use/)
-make you responsible for everything done with it.
-
 ## Data
+
+This is an unofficial integration, not affiliated with or endorsed by eBird or the Cornell Lab of Ornithology. Every
+user requests and enters an eBird API key of their own, and is bound by eBird's terms for it. If eBird objects to
+the integration, it will be withdrawn.
 
 ### eBird
 
@@ -242,8 +258,10 @@ Sightings come from the [eBird API 2.0](https://documenter.getpostman.com/view/6
 API key.
 
 - **Two requests per update:** recent observations and notable observations within the area. Every 60 minutes by
-  default, never more often than every 15 minutes. That's about 50 requests a day, plus one a day for the list of
-  species ever recorded in your county or region.
+  default, never more often than every 15 minutes, even when an update is asked for by hand or by an automation.
+  That's about 50 requests a day, plus one a day for the list of species ever recorded in your county or region.
+  When eBird can't be reached, the sensors are unavailable until the next update, which comes at the usual
+  interval.
 - **Your location is rounded** to two decimals (about 1 km) before it is sent.
 - **No observer names.** Only eBird's simple detail level is requested, which leaves them out.
 - **Personal locations' names are never shown**, since they are often addresses.
@@ -260,6 +278,13 @@ without one is looked up again after Home Assistant restarts.
 
 The IUCN Red List category comes from the same Wikidata item (property P141), the current assessment where it has
 several. Wikidata's data is CC0.
+
+## Translating
+
+The integration's texts are in `custom_components/birds_nearby/translations/`, one JSON file per language, named by
+its language code, such as `en.json` and `fi.json`. To add a language, copy `en.json` to the new language's code and
+translate the values. The map popup's texts and the compass directions are in `TEXTS` and `DIRECTIONS` in
+`custom_components/birds_nearby/feed.py`. Species names come from eBird in Home Assistant's language.
 
 ## Development
 
@@ -287,6 +312,12 @@ tests.
 | `sensor.py`                    | The sensors                                                                   |
 | `translations/<language>.json` | Home Assistant UI texts                                                       |
 
+## Support
+
+Hey dude! Help me out for a couple of :beers: or a :coffee:!
+
+[![coffee](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](https://www.buymeacoffee.com/jesmak)
+
 ## License
 
 MIT. The eBird data the integration shows is subject to eBird's terms, and each picture to its own licence on
@@ -297,13 +328,4 @@ Wikimedia Commons.
 [releases]: https://github.com/jesmak/birds_nearby/releases
 [hacs-shield]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge
 [hacs]: https://hacs.xyz/docs/faq/custom_repositories/
-[home-assistant-shield]: https://img.shields.io/badge/Home%20Assistant-UI%20setup-green.svg?style=for-the-badge
-[home-assistant]: https://www.home-assistant.io/
 [license-shield]: https://img.shields.io/github/license/jesmak/birds_nearby.svg?style=for-the-badge
-[maintenance-shield]: https://img.shields.io/maintenance/yes/2026.svg?style=for-the-badge
-[commits-shield]: https://img.shields.io/github/commit-activity/y/jesmak/birds_nearby.svg?style=for-the-badge
-[commits]: https://github.com/jesmak/birds_nearby/commits/main
-[bugs-shield]: https://img.shields.io/github/issues/jesmak/birds_nearby/bug?style=for-the-badge&label=bugs&color=red
-[bugs]: https://github.com/jesmak/birds_nearby/labels/bug
-[enhancements-shield]: https://img.shields.io/github/issues/jesmak/birds_nearby/enhancement?style=for-the-badge&label=enhancements&color=blue
-[enhancements]: https://github.com/jesmak/birds_nearby/labels/enhancement

@@ -1,0 +1,630 @@
+{
+    "resources": [
+        "https://github.com/nathan-gs/ha-map-card/releases/download/v1.16.0/map-card.js"
+    ],
+    "files": [
+        "../../hass-kortit/ha-map-card-plugin-map-feed/dist/ha-map-card-plugin-map-feed.js"
+    ],
+    "clock": "2026-05-14T08:30:00+03:00",
+    "translations": {
+        "birds_nearby": "custom_components/birds_nearby/translations"
+    },
+    "states": {
+        "sensor.birds_nearby_notable": {
+            "state": "1",
+            "attributes": {
+                "friendly_name": "Birds Nearby Notable",
+                "unit_of_measurement": "species",
+                "state_class": "measurement",
+                "attribution": "Data provided by eBird.org (https://ebird.org)",
+                "sightings": [
+                    {
+                        "name": "Citrine Wagtail",
+                        "count": 1,
+                        "observed": "2026-05-14T06:40",
+                        "location": "Reed Bay",
+                        "hotspot": true,
+                        "distance_km": 3.9,
+                        "direction": "southwest",
+                        "reviewed": false
+                    }
+                ]
+            }
+        },
+        "sensor.birds_nearby_recent": {
+            "state": "24",
+            "attributes": {
+                "friendly_name": "Birds Nearby Recent",
+                "unit_of_measurement": "species",
+                "state_class": "measurement",
+                "attribution": "Data provided by eBird.org (https://ebird.org)",
+                "days": 7
+            }
+        },
+        "sensor.birds_nearby_year_list": {
+            "state": "87",
+            "attributes": {
+                "friendly_name": "Birds Nearby Year list",
+                "unit_of_measurement": "species",
+                "state_class": "measurement",
+                "attribution": "Data provided by eBird.org (https://ebird.org)",
+                "year": 2026,
+                "since": "2026-01-01",
+                "species": [
+                    {
+                        "species_code": "citwag",
+                        "name": "Citrine Wagtail",
+                        "first_seen": "2026-05-14",
+                        "last_year": null
+                    },
+                    {
+                        "species_code": "thrnig1",
+                        "name": "Thrush Nightingale",
+                        "first_seen": "2026-05-13",
+                        "last_year": "2025-05-16"
+                    },
+                    {
+                        "species_code": "sedwar1",
+                        "name": "Sedge Warbler",
+                        "first_seen": "2026-05-11",
+                        "last_year": "2025-05-12"
+                    },
+                    {
+                        "species_code": "comcuc",
+                        "name": "Common Cuckoo",
+                        "first_seen": "2026-05-11",
+                        "last_year": "2025-05-14"
+                    },
+                    {
+                        "species_code": "comter",
+                        "name": "Common Tern",
+                        "first_seen": "2026-05-08",
+                        "last_year": "2025-05-03"
+                    },
+                    {
+                        "species_code": "barswa",
+                        "name": "Barn Swallow",
+                        "first_seen": "2026-05-04",
+                        "last_year": "2025-05-01"
+                    },
+                    {
+                        "species_code": "wlwwar",
+                        "name": "Willow Warbler",
+                        "first_seen": "2026-05-02",
+                        "last_year": "2025-04-28"
+                    },
+                    {
+                        "species_code": "horgre",
+                        "name": "Horned Grebe",
+                        "first_seen": "2026-04-29",
+                        "last_year": null
+                    },
+                    {
+                        "species_code": "lesbla1",
+                        "name": "Lesser Black-backed Gull",
+                        "first_seen": "2026-04-23",
+                        "last_year": null
+                    },
+                    {
+                        "species_code": "grcgre1",
+                        "name": "Great Crested Grebe",
+                        "first_seen": "2026-04-20",
+                        "last_year": null
+                    },
+                    {
+                        "species_code": "whiwag",
+                        "name": "White Wagtail",
+                        "first_seen": "2026-04-14",
+                        "last_year": null
+                    },
+                    {
+                        "species_code": "eurcur",
+                        "name": "Eurasian Curlew",
+                        "first_seen": "2026-04-11",
+                        "last_year": null
+                    },
+                    {
+                        "species_code": "sonthr1",
+                        "name": "Song Thrush",
+                        "first_seen": "2026-04-09",
+                        "last_year": null
+                    },
+                    {
+                        "species_code": "comcra",
+                        "name": "Common Crane",
+                        "first_seen": "2026-04-06",
+                        "last_year": null
+                    },
+                    {
+                        "species_code": "eurrob1",
+                        "name": "European Robin",
+                        "first_seen": "2026-04-03",
+                        "last_year": null
+                    },
+                    {
+                        "species_code": "bkhgul",
+                        "name": "Black-headed Gull",
+                        "first_seen": "2026-04-02",
+                        "last_year": null
+                    },
+                    {
+                        "species_code": "norlap",
+                        "name": "Northern Lapwing",
+                        "first_seen": "2026-03-31",
+                        "last_year": null
+                    },
+                    {
+                        "species_code": "comcha",
+                        "name": "Common Chaffinch",
+                        "first_seen": "2026-03-30",
+                        "last_year": null
+                    },
+                    {
+                        "species_code": "comgol",
+                        "name": "Common Goldeneye",
+                        "first_seen": "2026-03-28",
+                        "last_year": null
+                    },
+                    {
+                        "species_code": "whoswa",
+                        "name": "Whooper Swan",
+                        "first_seen": "2026-03-19",
+                        "last_year": null
+                    },
+                    {
+                        "species_code": "fieldf",
+                        "name": "Fieldfare",
+                        "first_seen": "2026-01-12",
+                        "last_year": null
+                    },
+                    {
+                        "species_code": "eurgre1",
+                        "name": "European Greenfinch",
+                        "first_seen": "2026-01-08",
+                        "last_year": null
+                    },
+                    {
+                        "species_code": "eurbla",
+                        "name": "Eurasian Blackbird",
+                        "first_seen": "2026-01-03",
+                        "last_year": null
+                    },
+                    {
+                        "species_code": "gretit1",
+                        "name": "Great Tit",
+                        "first_seen": "2026-01-01",
+                        "last_year": null
+                    }
+                ],
+                "last_year_since": "2025-01-01",
+                "expected": [
+                    {
+                        "species_code": "comswi",
+                        "name": "Common Swift",
+                        "last_year": "2025-05-09"
+                    },
+                    {
+                        "species_code": "garwar1",
+                        "name": "Garden Warbler",
+                        "last_year": "2025-05-11"
+                    },
+                    {
+                        "species_code": "spofly1",
+                        "name": "Spotted Flycatcher",
+                        "last_year": "2025-05-13"
+                    }
+                ]
+            }
+        },
+        "sensor.birds_nearby_sighting_places": {
+            "state": "8",
+            "attributes": {
+                "friendly_name": "Birds Nearby Sighting places",
+                "unit_of_measurement": "places",
+                "attribution": "Data provided by eBird.org (https://ebird.org)",
+                "map_feed_version": 1,
+                "area": {
+                    "center": [
+                        61.4978,
+                        23.761
+                    ],
+                    "radius_km": 15
+                },
+                "updated": "2026-05-14T08:30:00+03:00",
+                "geojson": {
+                    "type": "FeatureCollection",
+                    "features": [
+                        {
+                            "type": "Feature",
+                            "id": "location:L1000001",
+                            "geometry": {
+                                "type": "Point",
+                                "coordinates": [
+                                    23.7148,
+                                    61.4702
+                                ]
+                            },
+                            "properties": {
+                                "name": "Reed Bay",
+                                "kind": "bird",
+                                "updated": "2026-05-14T07:10:00+03:00",
+                                "badge": "6",
+                                "subtitle": "6 species · 14.5. · 3.9 km southwest",
+                                "color": "#d84315",
+                                "opacity": 1.0,
+                                "details": [
+                                    {
+                                        "label": "Citrine Wagtail",
+                                        "value": "1 bird · 06:40 · notable, not yet reviewed"
+                                    },
+                                    {
+                                        "label": "Sedge Warbler",
+                                        "value": "3 birds · 07:10"
+                                    },
+                                    {
+                                        "label": "Common Tern",
+                                        "value": "14 birds · 07:05"
+                                    },
+                                    {
+                                        "label": "Horned Grebe",
+                                        "value": "2 birds · 06:55"
+                                    },
+                                    {
+                                        "label": "Great Crested Grebe",
+                                        "value": "6 birds · 06:50"
+                                    },
+                                    {
+                                        "label": "Black-headed Gull",
+                                        "value": "120 birds · 06:45"
+                                    }
+                                ],
+                                "link": {
+                                    "url": "https://ebird.org/hotspot/L1000001",
+                                    "label": "Hotspot on eBird"
+                                }
+                            }
+                        },
+                        {
+                            "type": "Feature",
+                            "id": "location:L1000006",
+                            "geometry": {
+                                "type": "Point",
+                                "coordinates": [
+                                    23.6812,
+                                    61.5254
+                                ]
+                            },
+                            "properties": {
+                                "name": "5.2 km northwest",
+                                "kind": "bird",
+                                "updated": "2026-05-14T05:35:00+03:00",
+                                "badge": "2",
+                                "subtitle": "2 species · 14.5.",
+                                "color": "#2e7d32",
+                                "opacity": 1.0,
+                                "details": [
+                                    {
+                                        "label": "Song Thrush",
+                                        "value": "2 birds · 05:35"
+                                    },
+                                    {
+                                        "label": "European Robin",
+                                        "value": "1 bird · 05:30"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "type": "Feature",
+                            "id": "location:L1000002",
+                            "geometry": {
+                                "type": "Point",
+                                "coordinates": [
+                                    23.7321,
+                                    61.5068
+                                ]
+                            },
+                            "properties": {
+                                "name": "Lakeside Park",
+                                "kind": "bird",
+                                "updated": "2026-05-13T22:40:00+03:00",
+                                "badge": "5",
+                                "subtitle": "5 species · 13.5. · 1.8 km northwest",
+                                "color": "#2e7d32",
+                                "opacity": 0.9,
+                                "details": [
+                                    {
+                                        "label": "Thrush Nightingale",
+                                        "value": "1 bird · 22:40"
+                                    },
+                                    {
+                                        "label": "Willow Warbler",
+                                        "value": "5 birds · 18:25"
+                                    },
+                                    {
+                                        "label": "Common Chaffinch",
+                                        "value": "8 birds · 18:20"
+                                    },
+                                    {
+                                        "label": "Great Tit",
+                                        "value": "4 birds · 18:15"
+                                    },
+                                    {
+                                        "label": "Eurasian Blackbird",
+                                        "value": "3 birds · 18:10"
+                                    }
+                                ],
+                                "link": {
+                                    "url": "https://ebird.org/hotspot/L1000002",
+                                    "label": "Hotspot on eBird"
+                                }
+                            }
+                        },
+                        {
+                            "type": "Feature",
+                            "id": "location:L1000003",
+                            "geometry": {
+                                "type": "Point",
+                                "coordinates": [
+                                    23.7902,
+                                    61.5131
+                                ]
+                            },
+                            "properties": {
+                                "name": "Harbour Point",
+                                "kind": "bird",
+                                "updated": "2026-05-12T12:45:00+03:00",
+                                "badge": "3",
+                                "subtitle": "3 species · 12.5. · 2.3 km northeast",
+                                "color": "#2e7d32",
+                                "opacity": 0.8,
+                                "details": [
+                                    {
+                                        "label": "Lesser Black-backed Gull",
+                                        "value": "2 birds · 12:45"
+                                    },
+                                    {
+                                        "label": "Barn Swallow",
+                                        "value": "12 birds · 12:30"
+                                    },
+                                    {
+                                        "label": "Common Goldeneye",
+                                        "value": "9 birds · 12:10"
+                                    }
+                                ],
+                                "link": {
+                                    "url": "https://ebird.org/hotspot/L1000003",
+                                    "label": "Hotspot on eBird"
+                                }
+                            }
+                        },
+                        {
+                            "type": "Feature",
+                            "id": "location:L1000007",
+                            "geometry": {
+                                "type": "Point",
+                                "coordinates": [
+                                    23.6577,
+                                    61.4611
+                                ]
+                            },
+                            "properties": {
+                                "name": "6.8 km southwest",
+                                "kind": "bird",
+                                "updated": "2026-05-11T04:50:00+03:00",
+                                "badge": "1",
+                                "subtitle": "1 species · 11.5.",
+                                "color": "#2e7d32",
+                                "opacity": 0.7,
+                                "details": [
+                                    {
+                                        "label": "Common Cuckoo",
+                                        "value": "1 bird · 04:50"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "type": "Feature",
+                            "id": "location:L1000004",
+                            "geometry": {
+                                "type": "Point",
+                                "coordinates": [
+                                    23.8433,
+                                    61.4887
+                                ]
+                            },
+                            "properties": {
+                                "name": "Old Mill Pond",
+                                "kind": "bird",
+                                "updated": "2026-05-10T07:45:00+03:00",
+                                "badge": "3",
+                                "subtitle": "3 species · 10.5. · 4.5 km east",
+                                "color": "#2e7d32",
+                                "opacity": 0.6,
+                                "details": [
+                                    {
+                                        "label": "Common Crane",
+                                        "value": "3 birds · 07:45"
+                                    },
+                                    {
+                                        "label": "Northern Lapwing",
+                                        "value": "4 birds · 07:30"
+                                    },
+                                    {
+                                        "label": "Whooper Swan",
+                                        "value": "2 birds · 07:20"
+                                    }
+                                ],
+                                "link": {
+                                    "url": "https://ebird.org/hotspot/L1000004",
+                                    "label": "Hotspot on eBird"
+                                }
+                            }
+                        },
+                        {
+                            "type": "Feature",
+                            "id": "location:L1000008",
+                            "geometry": {
+                                "type": "Point",
+                                "coordinates": [
+                                    23.8611,
+                                    61.5402
+                                ]
+                            },
+                            "properties": {
+                                "name": "7.1 km northeast",
+                                "kind": "bird",
+                                "updated": "2026-05-09T16:10:00+03:00",
+                                "badge": "2",
+                                "subtitle": "2 species · 9.5.",
+                                "color": "#2e7d32",
+                                "opacity": 0.5,
+                                "details": [
+                                    {
+                                        "label": "European Greenfinch",
+                                        "value": "2 birds · 16:10"
+                                    },
+                                    {
+                                        "label": "Fieldfare",
+                                        "value": "6 birds · 16:00"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "type": "Feature",
+                            "id": "location:L1000005",
+                            "geometry": {
+                                "type": "Point",
+                                "coordinates": [
+                                    23.8104,
+                                    61.4522
+                                ]
+                            },
+                            "properties": {
+                                "name": "Meadow Shore",
+                                "kind": "bird",
+                                "updated": "2026-05-08T06:05:00+03:00",
+                                "badge": "2",
+                                "subtitle": "2 species · 8.5. · 5.7 km southeast",
+                                "color": "#2e7d32",
+                                "opacity": 0.4,
+                                "details": [
+                                    {
+                                        "label": "White Wagtail",
+                                        "value": "5 birds · 06:05"
+                                    },
+                                    {
+                                        "label": "Eurasian Curlew",
+                                        "value": "2 birds · 05:50"
+                                    }
+                                ],
+                                "link": {
+                                    "url": "https://ebird.org/hotspot/L1000005",
+                                    "label": "Hotspot on eBird"
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    },
+    "entities": {
+        "sensor.birds_nearby_notable": {
+            "device_id": "birds",
+            "platform": "birds_nearby",
+            "translation_key": "notable"
+        },
+        "sensor.birds_nearby_recent": {
+            "device_id": "birds",
+            "platform": "birds_nearby",
+            "translation_key": "recent"
+        },
+        "sensor.birds_nearby_year_list": {
+            "device_id": "birds",
+            "platform": "birds_nearby",
+            "translation_key": "year_list"
+        },
+        "sensor.birds_nearby_sighting_places": {
+            "device_id": "birds",
+            "platform": "birds_nearby",
+            "translation_key": "map"
+        }
+    },
+    "devices": {
+        "birds": {
+            "name": "Birds Nearby",
+            "name_by_user": null
+        }
+    },
+    "shots": [
+        {
+            "name": "dashboard",
+            "width": 1280,
+            "view": {
+                "type": "sections",
+                "max_columns": 3,
+                "sections": [
+                    {
+                        "type": "grid",
+                        "column_span": 2,
+                        "cards": [
+                            {
+                                "type": "custom:map-card",
+                                "x": 61.4978,
+                                "y": 23.761,
+                                "zoom": 11,
+                                "map_options": {
+                                    "zoomControl": false
+                                },
+                                "plugins": [
+                                    {
+                                        "name": "Birds",
+                                        "url": "/local/ha-map-card-plugin-map-feed.js",
+                                        "options": {
+                                            "entity": "sensor.birds_nearby_sighting_places",
+                                            "show_area": true
+                                        }
+                                    }
+                                ],
+                                "grid_options": {
+                                    "columns": "full",
+                                    "rows": 9
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "type": "grid",
+                        "cards": [
+                            {
+                                "type": "tile",
+                                "entity": "sensor.birds_nearby_year_list",
+                                "name": "Year list",
+                                "icon": "mdi:format-list-checks",
+                                "grid_options": {
+                                    "columns": 6
+                                }
+                            },
+                            {
+                                "type": "tile",
+                                "entity": "sensor.birds_nearby_recent",
+                                "name": "Recent",
+                                "icon": "mdi:binoculars",
+                                "grid_options": {
+                                    "columns": 6
+                                }
+                            },
+                            {
+                                "type": "markdown",
+                                "content": "{% set notable = state_attr('sensor.birds_nearby_notable', 'sightings') %}\n{% set year = state_attr('sensor.birds_nearby_year_list', 'species') %}\n{% set expected = state_attr('sensor.birds_nearby_year_list', 'expected') %}\n### Notable\n{% for s in notable %}**{{ s.name }}**, {{ s.location }}, {{ s.distance_km }} km {{ s.direction }}, {{ s.observed[11:] }}{{ '' if s.reviewed else ' (not yet reviewed)' }}\n{% endfor %}\n### New this year\n{% for s in year[:5] %}{% set days = (as_datetime(s.first_seen) - as_datetime(s.last_year | replace('2025-', '2026-'))).days if s.last_year else none %}**{{ s.name }}** {{ as_datetime(s.first_seen).strftime('%-d %b') }}{% if days is not none %}, {{ days | abs }} {{ 'day' if days | abs == 1 else 'days' }} {{ 'later' if days > 0 else 'earlier' }} than last year{% endif %}\n{% endfor %}\n### Seen by now last year\n{% for s in expected %}{{ s.name }} ({{ as_datetime(s.last_year).strftime('%-d %b') }}){{ ', ' if not loop.last }}{% endfor %}"
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
+}
