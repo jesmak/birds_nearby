@@ -384,3 +384,7 @@ def test_the_day_of_the_extra_call_carries_over_from_1_1_0() -> None:
     del stored["extra_call_tried"]
     stored["region_tried"] = "2026-10-12"
     assert Memory.from_dict(stored).extra_call_tried == "2026-10-12"
+
+    # The list was fetched today before 1.1.0 kept the day it tried: the day's extra call is spent all the same.
+    stored["region_tried"], stored["region_fetched"] = None, "2026-10-14"
+    assert Memory.from_dict(stored).extra_call_tried == "2026-10-14"

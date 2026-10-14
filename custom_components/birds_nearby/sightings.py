@@ -151,8 +151,10 @@ class Memory:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Memory:
-        # 1.1.0 kept the day of the extra call as the day the region's list was tried.
-        data = {"extra_call_tried": data.get("region_tried"), **data}
+        # 1.1.0 kept the day of the extra call as the day the region's list was tried, and older versions not at all,
+        # so the day the list was last fetched counts too.
+        earlier = max((day for day in (data.get("region_tried"), data.get("region_fetched")) if day), default=None)
+        data = {"extra_call_tried": earlier, **data}
         return cls(**{key: value for key, value in data.items() if key in cls.__dataclass_fields__})
 
     def as_dict(self) -> dict[str, Any]:

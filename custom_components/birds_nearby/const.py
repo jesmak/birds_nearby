@@ -10,7 +10,7 @@ ATTRIBUTION: Final = "Data provided by eBird.org (https://ebird.org)"
 EBIRD_URL: Final = "https://api.ebird.org/v2"
 
 # Wikimedia asks every client for a descriptive User-Agent with a way to reach its author.
-USER_AGENT: Final = "BirdsNearby/1.1.1 (https://github.com/jesmak/birds_nearby; Home Assistant integration)"
+USER_AGENT: Final = "BirdsNearby/1.1.2 (https://github.com/jesmak/birds_nearby; Home Assistant integration)"
 
 # Config entry data.
 CONF_API_KEY: Final = "api_key"
