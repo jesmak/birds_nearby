@@ -1,9 +1,6 @@
 {
     "resources": [
-        "https://github.com/nathan-gs/ha-map-card/releases/download/v1.16.0/map-card.js"
-    ],
-    "files": [
-        "../../hass-kortit/ha-map-card-plugin-map-feed/dist/ha-map-card-plugin-map-feed.js"
+        "../../hass-kortit/map-feed-card/dist/map-feed-card.js"
     ],
     "clock": "2026-05-14T08:30:00+03:00",
     "translations": {
@@ -252,10 +249,15 @@
                                 "subtitle": "6 species · 14.5. · 3.9 km southwest",
                                 "color": "#d84315",
                                 "opacity": 1.0,
+                                "distance_km": 3.9,
                                 "details": [
                                     {
                                         "label": "Citrine Wagtail",
-                                        "value": "1 bird · 06:40 · notable, not yet reviewed",
+                                        "value": "1 bird · 06:40 · not yet reviewed",
+                                        "tag": {
+                                            "text": "notable",
+                                            "tone": "item"
+                                        },
                                         "image": {
                                             "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/99/Citrine_Wagtail_%28Motacilla_citreola%29_%2814343964296%29.jpg/500px-Citrine_Wagtail_%28Motacilla_citreola%29_%2814343964296%29.jpg",
                                             "caption": "Citrine Wagtail · Ron Knight from Seaford, East Sussex, United Kingdom, CC BY 2.0"
@@ -279,7 +281,11 @@
                                     },
                                     {
                                         "label": "Horned Grebe",
-                                        "value": "2 birds · 06:55 · VU",
+                                        "value": "2 birds · 06:55",
+                                        "tag": {
+                                            "text": "VU",
+                                            "tone": "warning"
+                                        },
                                         "image": {
                                             "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/77/Podiceps_auritus_%2813909539717%29.jpg/500px-Podiceps_auritus_%2813909539717%29.jpg",
                                             "caption": "Horned Grebe · Ekaterina Chernetsova (Papchinskaya) from Saint-Petersburg…, CC BY 2.0"
@@ -305,6 +311,10 @@
                                 "link": {
                                     "url": "https://ebird.org/hotspot/L1000001",
                                     "label": "Hotspot on eBird"
+                                },
+                                "list": {
+                                    "text": "6 species · 14.5.",
+                                    "value": "3.9 km"
                                 }
                             }
                         },
@@ -326,6 +336,7 @@
                                 "subtitle": "2 species · 14.5.",
                                 "color": "#2e7d32",
                                 "opacity": 1.0,
+                                "distance_km": 5.2,
                                 "details": [
                                     {
                                         "label": "Song Thrush",
@@ -356,6 +367,7 @@
                                 "subtitle": "5 species · 13.5. · 1.8 km northwest",
                                 "color": "#2e7d32",
                                 "opacity": 0.9,
+                                "distance_km": 1.8,
                                 "details": [
                                     {
                                         "label": "Thrush Nightingale",
@@ -381,6 +393,10 @@
                                 "link": {
                                     "url": "https://ebird.org/hotspot/L1000002",
                                     "label": "Hotspot on eBird"
+                                },
+                                "list": {
+                                    "text": "5 species · 13.5.",
+                                    "value": "1.8 km"
                                 }
                             }
                         },
@@ -402,6 +418,7 @@
                                 "subtitle": "3 species · 12.5. · 2.3 km northeast",
                                 "color": "#2e7d32",
                                 "opacity": 0.8,
+                                "distance_km": 2.3,
                                 "details": [
                                     {
                                         "label": "Lesser Black-backed Gull",
@@ -419,6 +436,10 @@
                                 "link": {
                                     "url": "https://ebird.org/hotspot/L1000003",
                                     "label": "Hotspot on eBird"
+                                },
+                                "list": {
+                                    "text": "3 species · 12.5.",
+                                    "value": "2.3 km"
                                 }
                             }
                         },
@@ -440,6 +461,7 @@
                                 "subtitle": "1 species · 11.5.",
                                 "color": "#2e7d32",
                                 "opacity": 0.7,
+                                "distance_km": 6.8,
                                 "details": [
                                     {
                                         "label": "Common Cuckoo",
@@ -466,6 +488,7 @@
                                 "subtitle": "3 species · 10.5. · 4.5 km east",
                                 "color": "#2e7d32",
                                 "opacity": 0.6,
+                                "distance_km": 4.5,
                                 "details": [
                                     {
                                         "label": "Common Crane",
@@ -483,6 +506,10 @@
                                 "link": {
                                     "url": "https://ebird.org/hotspot/L1000004",
                                     "label": "Hotspot on eBird"
+                                },
+                                "list": {
+                                    "text": "3 species · 10.5.",
+                                    "value": "4.5 km"
                                 }
                             }
                         },
@@ -504,6 +531,7 @@
                                 "subtitle": "2 species · 9.5.",
                                 "color": "#2e7d32",
                                 "opacity": 0.5,
+                                "distance_km": 7.1,
                                 "details": [
                                     {
                                         "label": "European Greenfinch",
@@ -534,6 +562,7 @@
                                 "subtitle": "2 species · 8.5. · 5.7 km southeast",
                                 "color": "#2e7d32",
                                 "opacity": 0.4,
+                                "distance_km": 5.7,
                                 "details": [
                                     {
                                         "label": "White Wagtail",
@@ -547,10 +576,42 @@
                                 "link": {
                                     "url": "https://ebird.org/hotspot/L1000005",
                                     "label": "Hotspot on eBird"
+                                },
+                                "list": {
+                                    "text": "2 species · 8.5.",
+                                    "value": "5.7 km"
                                 }
                             }
                         }
                     ]
+                },
+                "feed_type": "nature",
+                "legend": [
+                    {
+                        "color": "#2e7d32",
+                        "label": "sighting place"
+                    },
+                    {
+                        "color": "#d84315",
+                        "label": "notable"
+                    }
+                ],
+                "list": {
+                    "sort": [
+                        {
+                            "key": "distance",
+                            "label": "Distance",
+                            "property": "distance_km"
+                        },
+                        {
+                            "key": "newest",
+                            "label": "Newest",
+                            "property": "updated",
+                            "order": "desc"
+                        }
+                    ],
+                    "default": "distance",
+                    "count": "sighting places"
                 }
             }
         }
@@ -597,27 +658,15 @@
                         "column_span": 2,
                         "cards": [
                             {
-                                "type": "custom:map-card",
-                                "x": 61.4978,
-                                "y": 23.761,
-                                "zoom": 11,
-                                "map_options": {
-                                    "zoomControl": false
-                                },
-                                "plugins": [
+                                "type": "custom:map-feed-card",
+                                "map_height": 436,
+                                "list": true,
+                                "entities": [
                                     {
-                                        "name": "Birds",
-                                        "url": "/local/ha-map-card-plugin-map-feed.js",
-                                        "options": {
-                                            "entity": "sensor.birds_nearby_sighting_places",
-                                            "show_area": true
-                                        }
+                                        "entity": "sensor.birds_nearby_sighting_places",
+                                        "show_area": true
                                     }
-                                ],
-                                "grid_options": {
-                                    "columns": "full",
-                                    "rows": 9
-                                }
+                                ]
                             }
                         ]
                     },
