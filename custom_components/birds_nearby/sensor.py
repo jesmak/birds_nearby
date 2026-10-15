@@ -15,7 +15,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import ATTRIBUTION, DOMAIN, MAP_FEED_VERSION
 from .coordinator import BirdsConfigEntry, BirdsCoordinator
-from .feed import features
+from .feed import features, feed_attributes
 
 
 async def async_setup_entry(
@@ -174,6 +174,7 @@ class MapFeedSensor(BirdsSensor):
         coordinator = self.coordinator
         return {
             "map_feed_version": MAP_FEED_VERSION,
+            **feed_attributes(coordinator.language),
             "area": {"center": [coordinator.latitude, coordinator.longitude], "radius_km": coordinator.radius_km},
             "updated": coordinator.data.updated.isoformat(timespec="seconds"),
             "geojson": {"type": "FeatureCollection", "features": self._features()},

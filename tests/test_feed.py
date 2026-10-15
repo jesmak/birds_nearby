@@ -4,7 +4,17 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from custom_components.birds_nearby.feed import TEXTS, _row, caption, clock, features, from_centre, opacity, short_time
+from custom_components.birds_nearby.feed import (
+    TEXTS,
+    _row,
+    caption,
+    clock,
+    features,
+    feed_attributes,
+    from_centre,
+    opacity,
+    short_time,
+)
 from custom_components.birds_nearby.pictures import Picture, SpeciesInfo
 from custom_components.birds_nearby.sightings import parse_observations
 
@@ -53,6 +63,9 @@ def test_species_at_the_same_place_are_one_point() -> None:
     assert bay["color"] == "#2e7d32"
     assert bay["opacity"] == 1.0, "a sighting today"
     assert bay["link"] == {"url": "https://ebird.org/hotspot/L900001", "label": "Havaintopaikka eBirdissä"}
+    assert bay["distance_km"] == 0.2
+    # The list shows the distance as the value, so the row's text leaves it out; the subtitle keeps the direction.
+    assert bay["list"] == {"text": "2 lajia", "value": "0,2 km"}
 
     personal = by_id["location:L900002"]
     assert personal["geometry"]["coordinates"] == [25.6411, 60.9702], "drawn where it was reported"
@@ -61,8 +74,15 @@ def test_species_at_the_same_place_are_one_point() -> None:
     assert personal["properties"]["subtitle"] == "1 lajia · 10.10."
     assert personal["properties"]["details"] == [
         # One day: the date is in the subtitle and the row shows only the time.
-        {"label": "Hooded Crow", "value": "2 yksilöä · 08.15 · huomionarvoinen, ei vielä tarkastettu · VU"}
+        # Notable is the tag, in the place's own orange; the threat status stays in the text.
+        {
+            "label": "Hooded Crow",
+            "value": "2 yksilöä · 08.15 · ei vielä tarkastettu · VU",
+            "tag": {"text": "huomionarvoinen", "tone": "item"},
+        }
     ]
+    assert personal["properties"]["distance_km"] == 1.5
+    assert "list" not in personal["properties"], "its name is its distance already"
     assert personal["properties"]["opacity"] == 0.9, "yesterday, of seven recent days"
     assert "link" not in personal["properties"], "a personal location has no public page"
     assert personal["properties"]["color"] == "#d84315", "a place with a notable sighting stands out"
@@ -117,16 +137,23 @@ def test_counts_in_each_language() -> None:
 
 def test_only_threatened_statuses_are_shown_on_the_map() -> None:
     [one] = parse_observations([observation(count=1)])
-    for status, shown in (
-        ("LC", "1 bird · 08:15"),
-        ("DD", "1 bird · 08:15"),
-        ("NT", "1 bird · 08:15 · NT"),
-        (None, "1 bird · 08:15"),
-    ):
-        assert _row(one, False, SpeciesInfo(None, status), True, TEXTS["en"], "en")["value"] == shown
+    for status, tag in (("LC", None), ("DD", None), ("NT", {"text": "NT", "tone": "warning"}), (None, None)):
+        row = _row(one, False, SpeciesInfo(None, status), True, TEXTS["en"], "en")
+        assert row["value"] == "1 bird · 08:15"
+        assert row.get("tag") == tag
 
 
 def test_other_languages_get_the_english_formats() -> None:
     [parsed] = parse_observations([observation(observed="2026-10-11 14:05")])
     assert from_centre((60.0, 25.0), 60.05, 25.0, "de") == "5.6 km north"
     assert clock(parsed.observed, "de") == "14:05"
+
+
+def test_the_feed_says_what_it_is_and_how_its_list_sorts() -> None:
+    attributes = feed_attributes("fi")
+    assert attributes["feed_type"] == "nature"
+    assert attributes["legend"] == [{"color": "#2e7d32", "label": "havaintopaikka"}, {"color": "#d84315", "label": "huomionarvoinen"}]
+    assert [key["property"] for key in attributes["list"]["sort"]] == ["distance_km", "updated"]
+    assert attributes["list"]["default"] == "distance"
+    assert attributes["list"]["count"] == "havaintopaikkaa"
+    assert feed_attributes("de")["legend"][1]["label"] == "notable", "other languages get the English texts"

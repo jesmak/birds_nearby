@@ -25,9 +25,8 @@ When something new turns up, it fires an event. That can be a notable sighting, 
 species back after a while, or the first record of a species in your county or region. Your own automations decide what
 deserves a notification, and every event says how far away and in which direction the bird was seen.
 
-The sightings are also a map feed for [ha-map-card](https://github.com/nathan-gs/ha-map-card) through
-[ha-map-card-plugin-map-feed](https://github.com/jesmak/ha-map-card-plugin-map-feed). Each place birds were seen is
-a point, its popup listing the species with their counts, times and pictures from Wikipedia. Species names follow
+The sightings are also a map feed for [map-feed-card](https://github.com/jesmak/map-feed-card). Each place birds were
+seen is a point on the map, its details listing the species with their counts, times and pictures from Wikipedia. Species names follow
 Home Assistant's language where eBird has them, otherwise they are in English.
 
 ### What it can't do
@@ -173,18 +172,21 @@ can't hide it. Spuhs ("gull sp."), slashes and hybrids are never first records.
 
 ## The map
 
-The map sensor is a map feed in the [Map Feed format](https://github.com/jesmak/ha-map-card-plugin-map-feed/blob/main/docs/map-feed-format.md).
-Draw it with ha-map-card and the map feed plugin, as in the [examples](#the-sightings-on-a-map).
+The map sensor is a map feed in the [Map Feed format](https://github.com/jesmak/map-feed-card/blob/main/docs/map-feed-format.md).
+Draw it with [map-feed-card](https://github.com/jesmak/map-feed-card), as in the [examples](#the-sightings-on-a-map).
 
-Each place birds were seen in the recent days is one point, its badge the number of species. The popup lists the
+Each place birds were seen in the recent days is one point, its badge the number of species. Its details list the
 species, newest first, with how many birds were counted and when, each with a small picture that opens large when
 tapped. When every species at a place was seen on the same day, the date is shown once, under the title. A place
-with a notable sighting is drawn in orange, its notable species listed first. A species near threatened or worse on
-the IUCN Red List has its category after it (`NT`, `VU`, `EN`, `CR` or `EW`).
+with a notable sighting is drawn in orange, its notable species listed first and tagged in the same orange. A species
+near threatened or worse on the IUCN Red List is tagged with its category (`NT`, `VU`, `EN`, `CR` or `EW`), or has it
+after its count when it is notable as well. The card's legend says what green and orange mean.
 
 A place fades with the age of its newest sighting. It is drawn in full with a sighting today, and fainter each day
-until the last of the recent days. A hotspot's popup ends with a link to its page on eBird. Fading and the link need
-version 1.2 of the map feed plugin, and the pictures 1.1. Older versions leave them out.
+until the last of the recent days. A hotspot's details end with a link to its page on eBird.
+
+In the card's list, the places can be sorted by their distance from the area's centre, nearest first, or by their
+newest sighting. A hotspot's row shows its distance on the right.
 
 Every place is drawn where it was reported. A hotspot, a public place shared by eBird's observers, is titled with its
 name, with its distance and direction from the area's centre below it. A personal location, one an observer pinned
@@ -243,16 +245,12 @@ automation:
 ### The sightings on a map
 
 ```yaml
-type: custom:map-card
+type: custom:map-feed-card
 title: Birds nearby
-plugins:
-  - name: Birds
-    hacs:
-      module: ha-map-card-plugin-map-feed
-      file: ha-map-card-plugin-map-feed.js
-    options:
-      entity: sensor.birds_nearby_sighting_places
-      show_area: true
+list: true
+entities:
+  - entity: sensor.birds_nearby_sighting_places
+    show_area: true
 ```
 
 ## Data

@@ -1,6 +1,6 @@
 """The sightings as a map feed, one point per location.
 
-The format is documented in docs/map-feed-format.md of ha-map-card-plugin-map-feed.
+The format is documented in docs/map-feed-format.md of map-feed-card.
 Many species are seen at the same place, and markers at the same spot would hide each
 other, so each location is one point listing its species.
 """
@@ -46,6 +46,11 @@ TEXTS: dict[str, dict[str, str]] = {
         "distance": "{km} km {direction}",
         "centre": "At the centre",
         "hotspot_link": "Hotspot on eBird",
+        "place": "sighting place",
+        "places": "sighting places",
+        "by_distance": "Distance",
+        "by_newest": "Newest",
+        "km": "{km} km",
     },
     "fi": {
         "species": "{count} lajia",
@@ -56,6 +61,11 @@ TEXTS: dict[str, dict[str, str]] = {
         "distance": "{km} km {direction}",
         "centre": "Alueen keskellä",
         "hotspot_link": "Havaintopaikka eBirdissä",
+        "place": "havaintopaikka",
+        "places": "havaintopaikkaa",
+        "by_distance": "Etäisyys",
+        "by_newest": "Uusimmat",
+        "km": "{km} km",
     },
 }
 
@@ -75,6 +85,23 @@ class Place:
     # The hotspot's name, or None for a personal location: its name is whatever the observer typed, often an address.
     hotspot_name: str | None
     observations: list[Observation] = field(default_factory=list)
+
+
+def feed_attributes(language: str) -> dict[str, Any]:
+    """What the map feed card shows beside the places: the feed's type, what its colours mean and how its list sorts."""
+    texts = TEXTS.get(language, TEXTS["en"])
+    return {
+        "feed_type": "nature",
+        "legend": [{"color": BIRD_COLOR, "label": texts["place"]}, {"color": NOTABLE_COLOR, "label": texts["notable"]}],
+        "list": {
+            "sort": [
+                {"key": "distance", "label": texts["by_distance"], "property": "distance_km"},
+                {"key": "newest", "label": texts["by_newest"], "property": "updated", "order": "desc"},
+            ],
+            "default": "distance",
+            "count": texts["places"],
+        },
+    }
 
 
 def places(observations: list[Observation]) -> list[Place]:
@@ -113,6 +140,7 @@ def features(
         # Notable species first, then the newest.
         shown = sorted(species, key=lambda item: item.key not in notable_keys)
         where = from_centre(centre, place.latitude, place.longitude, language)
+        km = round(distance_and_bearing(centre, place.latitude, place.longitude)[0], 1)
         # All from one day, usually one visit: the date goes in the subtitle and the rows show only the time.
         one_day = len({observation.observed.date() for observation in species}) == 1
         day = short_date(species[0].observed) if one_day else None
@@ -129,6 +157,7 @@ def features(
             "subtitle": subtitle,
             "color": NOTABLE_COLOR if has_notable else BIRD_COLOR,
             "opacity": opacity(species[0].observed, now, recent_days),
+            "distance_km": km,
             "details": [
                 _row(
                     observation,
@@ -142,6 +171,12 @@ def features(
             ],
         }
         if place.hotspot_name:
+            # In the card's list a hotspot's row is its name, what was seen and its distance; the direction stays in
+            # the subtitle, which the card shows with the details.
+            properties["list"] = {
+                "text": " · ".join(part for part in (count, day) if part),
+                "value": texts["km"].format(km=decimal(km, language)),
+            }
             properties["link"] = {
                 "url": f"https://ebird.org/hotspot/{place.location_id}",
                 "label": texts["hotspot_link"],
@@ -180,11 +215,18 @@ def _row(
     when = clock(observation.observed, language) if time_only else short_time(observation.observed, language)
     if when:
         parts.append(when)
-    if notable:
-        parts.append(texts["notable"] if observation.reviewed else f"{texts['notable']}, {texts['unreviewed']}")
-    if info and info.iucn in SHOWN_IUCN:
-        parts.append(info.iucn)
+    if notable and not observation.reviewed:
+        parts.append(texts["unreviewed"])
+    threatened = info.iucn if info and info.iucn in SHOWN_IUCN else None
+    # One tag a row: notable in the place's own colour, which is what made the place orange, or else the threat
+    # status. A notable species that is also threatened keeps its status in the text.
+    if notable and threatened:
+        parts.append(threatened)
     row: dict[str, Any] = {"label": observation.name, "value": " · ".join(parts)}
+    if notable:
+        row["tag"] = {"text": texts["notable"], "tone": "item"}
+    elif threatened:
+        row["tag"] = {"text": threatened, "tone": "warning"}
     if info and info.picture:
         row["image"] = {"url": info.picture.url, "caption": caption(observation.name, info.picture)}
     return row
@@ -204,9 +246,12 @@ def from_centre(centre: tuple[float, float], latitude: float, longitude: float, 
     km, bearing = distance_and_bearing(centre, latitude, longitude)
     if km < CENTRE_KM:
         return texts["centre"]
-    # Finnish formats only with Finnish texts: any other language gets the English ones.
-    shown = f"{km:.1f}".replace(".", ",") if language == "fi" else f"{km:.1f}"
-    return texts["distance"].format(km=shown, direction=direction(bearing, language))
+    return texts["distance"].format(km=decimal(km, language), direction=direction(bearing, language))
+
+
+def decimal(km: float, language: str) -> str:
+    """ "3,2" in Finnish, "3.2" otherwise: Finnish formats only with Finnish texts, any other language gets English ones."""
+    return f"{km:.1f}".replace(".", ",") if language == "fi" else f"{km:.1f}"
 
 
 def distance_and_bearing(centre: tuple[float, float], latitude: float, longitude: float) -> tuple[float, float]:
