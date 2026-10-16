@@ -107,7 +107,8 @@ class Memory:
     """What the integration has learned since it was set up. Kept in its own storage."""
 
     year: int
-    # The day this year's list started: as far back as the first poll reached, or 1 January after that.
+    # The day this year's list started: as far back as the year's first poll reached, which is 1 January when the
+    # integration was running on it.
     year_started: str
     # Species code: the date it was first seen this year.
     year_list: dict[str, str] = field(default_factory=dict)
@@ -146,8 +147,7 @@ class Memory:
 
     @classmethod
     def new(cls, today: date) -> Memory:
-        # The first poll reaches 30 days back, into this year or to its very start.
-        return cls(year=today.year, year_started=max(date(today.year, 1, 1), today - timedelta(days=WINDOW_DAYS)).isoformat())
+        return cls(year=today.year, year_started=list_start(today))
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Memory:
@@ -239,6 +239,11 @@ class Memory:
         return sorted(found, key=lambda item: item[1])
 
 
+def list_start(today: date) -> str:
+    """The first day a year's list can have when its first poll is today: 30 days back, into this year or to its start."""
+    return max(date(today.year, 1, 1), today - timedelta(days=WINDOW_DAYS)).isoformat()
+
+
 def same_day(day: date, year: int) -> date:
     """The day in another year; 29 February becomes the 28th in a year without it."""
     try:
@@ -261,7 +266,8 @@ def remember(
     if today.year != memory.year:
         memory.past_years[str(memory.year)] = {"since": memory.year_started, "first_seen": memory.year_list}
         memory.year = today.year
-        memory.year_started = date(today.year, 1, 1).isoformat()
+        # After a gap over New Year, the list starts where the first poll reaches, not on 1 January.
+        memory.year_started = list_start(today)
         memory.year_list = {}
     follow_new_codes(memory, [*recent, *notable])
 
@@ -329,11 +335,13 @@ def remember(
                 announced.add(observation.species)
                 events.append(Event(FIRST_IN_REGION, observation, notable=notable_here))
 
-        if is_new_this_year:
-            memory.year_list[observation.species] = seen_on.isoformat()
-        elif (past := memory.past_years.get(str(seen_on.year))) and observation.species not in past["first_seen"]:
-            # A checklist of the last days of December that reached eBird after New Year.
-            past["first_seen"][observation.species] = seen_on.isoformat()
+        # The earliest day of the year the species was seen, also from a checklist uploaded late. One of the last days of
+        # December can reach eBird after New Year.
+        past = memory.past_years.get(str(seen_on.year))
+        first_dates = memory.year_list if seen_on.year == memory.year else past["first_seen"] if past else None
+        first = first_dates.get(observation.species) if first_dates is not None else None
+        if first_dates is not None and (first is None or seen_on.isoformat() < first):
+            first_dates[observation.species] = seen_on.isoformat()
         if previous is None or seen_on.isoformat() > previous:
             memory.last_seen[observation.species] = seen_on.isoformat()
 

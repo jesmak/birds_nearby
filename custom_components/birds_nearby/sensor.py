@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from datetime import date
 from typing import Any
 
@@ -16,6 +17,7 @@ from homeassistant.util import dt as dt_util
 from .const import ATTRIBUTION, DOMAIN, MAP_FEED_VERSION
 from .coordinator import BirdsConfigEntry, BirdsCoordinator
 from .feed import features, feed_attributes
+from .sightings import Observation
 
 
 async def async_setup_entry(
@@ -50,7 +52,7 @@ class BirdsSensor(CoordinatorEntity[BirdsCoordinator], SensorEntity):
 
 
 class NotableSensor(BirdsSensor):
-    """The species among eBird's notable observations of the last 30 days, each sighting in the attributes."""
+    """The species among eBird's notable observations of the last 30 days, with the newest sighting of each."""
 
     _attr_icon = "mdi:bird"
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -64,10 +66,21 @@ class NotableSensor(BirdsSensor):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
+        # A rarity can be on hundreds of checklists: each species once, with how many reported it.
+        notable = self.coordinator.data.notable
+        reports = Counter(observation.species for observation in notable)
+        newest: dict[str, Observation] = {}
+        for observation in notable:
+            newest.setdefault(observation.species, observation)
         return {
             "sightings": [
-                {**self.coordinator.sighting(observation), "valid": observation.valid, "reviewed": observation.reviewed}
-                for observation in self.coordinator.data.notable
+                {
+                    **self.coordinator.sighting(observation),
+                    "reports": reports[observation.species],
+                    "valid": observation.valid,
+                    "reviewed": observation.reviewed,
+                }
+                for observation in newest.values()
             ]
         }
 
@@ -133,7 +146,7 @@ class YearListSensor(BirdsSensor):
 
 
 class MapFeedSensor(BirdsSensor):
-    """The sightings as a map feed for ha-map-card-plugin-map-feed: a point for each place birds were seen."""
+    """The sightings as a map feed for map-feed-card: a point for each place birds were seen."""
 
     _attr_icon = "mdi:map-marker-multiple"
 

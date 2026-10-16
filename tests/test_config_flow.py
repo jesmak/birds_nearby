@@ -20,7 +20,7 @@ from custom_components.birds_nearby.const import (
     EBIRD_URL,
 )
 
-from .conftest import API_KEY, LATITUDE, LONGITUDE, REGION, birds_entry
+from .conftest import API_KEY, HOTSPOTS, LATITUDE, LONGITUDE, REGION, birds_entry
 
 AREA = {"latitude": LATITUDE, "longitude": LONGITUDE, "radius": 20000}
 
@@ -49,6 +49,21 @@ async def test_adding_an_area_checks_the_key_and_picks_the_region(
     hotspot_call = next(call for call in ebird.mock_calls if "hotspot" in str(call[1]))
     assert hotspot_call[1].query["lat"] == "60.98"
     assert hotspot_call[3]["x-ebirdapitoken"] == API_KEY
+
+
+async def test_a_hotspot_without_coordinates_is_passed_over(
+    enable_custom_integrations, hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
+) -> None:
+    hotspots = [{**HOTSPOTS[1], "subnational1Code": "FI-97", "lat": None}, *HOTSPOTS]
+    aioclient_mock.get(f"{EBIRD_URL}/ref/hotspot/geo", json=hotspots)
+
+    result = await start(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_NAME: "Birds Nearby", CONF_API_KEY: API_KEY, CONF_LOCATION: AREA}
+    )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["options"][CONF_REGION] == REGION
 
 
 async def test_a_refused_key(enable_custom_integrations, hass: HomeAssistant, aioclient_mock: AiohttpClientMocker) -> None:

@@ -158,6 +158,33 @@ def test_a_late_december_checklist_goes_on_last_years_list() -> None:
     assert memory.year_list == {}
 
 
+def test_a_new_year_after_a_gap_starts_where_its_first_poll_reaches() -> None:
+    memory = started(obs(observed="2026-12-18 10:00"), today=date(2026, 12, 20))
+
+    remember(memory, [obs(species="hoocro1", checklist="S900051", observed="2027-02-10 09:00")], [], date(2027, 2, 15), 30)
+
+    assert memory.year_started == "2027-01-16", "the list can't know what was seen before the poll's 30 days"
+
+
+def test_a_late_checklist_moves_a_first_sighting_earlier_without_an_event() -> None:
+    memory = started(obs(observed="2026-10-11 10:00"))
+
+    events = remember(memory, [obs(checklist="S900052", observed="2026-10-02 10:00")], [], TODAY, 30)
+
+    assert events == []
+    assert memory.year_list["eurbla"] == "2026-10-02"
+    assert memory.last_seen["eurbla"] == "2026-10-11"
+
+
+def test_a_late_december_checklist_moves_last_years_first_sighting_earlier() -> None:
+    memory = started(obs(observed="2026-12-30 10:00"), today=date(2026, 12, 31))
+    remember(memory, [], [], date(2027, 1, 1), 30)
+
+    remember(memory, [obs(checklist="S900061", observed="2026-12-24 15:00")], [], date(2027, 1, 2), 30)
+
+    assert memory.past_years["2026"]["first_seen"] == {"eurbla": "2026-12-24"}
+
+
 def last_year(since: str, **first_seen: str) -> Memory:
     memory = Memory.new(date(2027, 5, 1))
     memory.past_years["2026"] = {"since": since, "first_seen": first_seen}

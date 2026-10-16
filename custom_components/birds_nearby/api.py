@@ -47,7 +47,9 @@ class EbirdClient:
         hotspots = await self._get("ref/hotspot/geo", params)
         if not isinstance(hotspots, list):
             raise EbirdError("eBird sent the hotspots in an unexpected format")
-        located = [spot for spot in hotspots if isinstance(spot, dict) and "lat" in spot and "lng" in spot]
+        located = [
+            spot for spot in hotspots if isinstance(spot, dict) and all(isinstance(spot.get(key), (int, float)) for key in ("lat", "lng"))
+        ]
         if not located:
             return None
         nearest = min(located, key=lambda spot: distance_km(latitude, longitude, spot["lat"], spot["lng"]))

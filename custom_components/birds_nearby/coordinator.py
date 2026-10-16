@@ -50,6 +50,10 @@ NAMES_PER_CALL = 200
 # How long the events wait for their species' pictures.
 EVENT_PICTURE_SECONDS = 60
 
+# A refresh this soon after the last poll returns the same data. A minute short of the shortest interval, since a
+# scheduled update can come a moment early.
+THROTTLE = timedelta(minutes=MIN_SCAN_MINUTES - 1)
+
 EVENT_TYPES = {
     NOTABLE: EVENT_NOTABLE,
     FIRST_OF_YEAR: EVENT_FIRST_OF_YEAR,
@@ -99,6 +103,8 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
         self.species: dict[str, SpeciesInfo] = {}
         self._looking_up = False
         self._polled_at: datetime | None = None
+        # Warned once when the lookups start failing, not again until one has worked.
+        self._wikimedia_failing = False
 
     async def async_load(self) -> None:
         stored = await self._store.async_load()
@@ -112,8 +118,8 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
 
     async def _async_update_data(self) -> Sightings:
         now = dt_util.now()
-        if self.data is not None and self._polled_at and now - self._polled_at < timedelta(minutes=MIN_SCAN_MINUTES):
-            # A refresh asked for by hand or an automation: eBird is never polled more often than this.
+        if self.data is not None and self._polled_at and now - self._polled_at < THROTTLE:
+            # A refresh asked for by hand or an automation.
             return self.data
         today = now.date()
         locale = ebird_locale(self.hass.config.language)
@@ -269,6 +275,7 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
         self.async_update_listeners()
 
     async def _fetch_species(self, wanted: dict[str, str]) -> None:
+        """A species that fails is looked up again with the next update's sightings."""
         session = async_get_clientsession(self.hass)
         for species, scientific in wanted.items():
             if species in self.species:
@@ -276,7 +283,14 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
             try:
                 self.species[species] = await find_species(session, species, scientific)
             except WikimediaError as err:
+                if not self._wikimedia_failing:
+                    _LOGGER.warning("Couldn't look up species on Wikimedia, their pictures and IUCN statuses are missing: %s", err)
+                    self._wikimedia_failing = True
                 _LOGGER.debug("Nothing on %s from Wikimedia this time: %s", species, err)
+            else:
+                if self._wikimedia_failing:
+                    _LOGGER.info("Wikimedia lookups work again")
+                    self._wikimedia_failing = False
 
     def _save(self) -> None:
         self._store.async_delay_save(self._stored, 10)

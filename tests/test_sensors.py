@@ -127,6 +127,19 @@ async def test_a_rarity_on_the_next_poll(
     assert not any("spplist" in str(call[1]) for call in ebird.mock_calls)
 
 
+async def test_a_rarity_on_many_checklists_is_listed_once(
+    enable_custom_integrations, hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
+) -> None:
+    reports = [{**RARITY, "subId": f"S90011{n}", "obsDt": f"2026-10-1{n} 09:00"} for n in range(3)]
+    answer(aioclient_mock, recent=[*RECENT, RARITY], notable=reports)
+    await set_up(hass)
+
+    notable = hass.states.get("sensor.birds_nearby_notable")
+    assert notable.state == "1"
+    [sighting] = notable.attributes["sightings"]
+    assert (sighting["species_code"], sighting["observed"], sighting["reports"]) == ("palhar1", "2026-10-12T09:00", 3)
+
+
 async def test_the_memory_survives_a_restart(enable_custom_integrations, hass: HomeAssistant, ebird: AiohttpClientMocker) -> None:
     entry = await set_up(hass)
     assert await hass.config_entries.async_unload(entry.entry_id)
@@ -207,6 +220,19 @@ async def test_a_refresh_by_hand_doesnt_poll_ebird_more_often_than_every_15_minu
     await hass.services.async_call("homeassistant", "update_entity", {"entity_id": "sensor.birds_nearby_recent"}, blocking=True)
     await hass.async_block_till_done()
     assert sum("geo/recent" in str(call[1]) for call in ebird.mock_calls) == 2, "recent and notable, once"
+
+
+async def test_an_update_a_moment_early_at_the_shortest_interval_still_polls(
+    enable_custom_integrations, hass: HomeAssistant, ebird: AiohttpClientMocker, freezer: FrozenDateTimeFactory
+) -> None:
+    entry = await set_up(hass, scan_interval=15)
+    ebird.clear_requests()
+    answer(ebird)
+
+    freezer.tick(15 * 60 - 1)
+    await entry.runtime_data.async_refresh()
+
+    assert sum("geo/recent" in str(call[1]) for call in ebird.mock_calls) == 2
 
 
 async def test_a_reload_right_after_a_poll_keeps_its_memory(

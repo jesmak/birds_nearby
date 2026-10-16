@@ -152,8 +152,11 @@ def test_other_languages_get_the_english_formats() -> None:
 def test_the_feed_says_what_it_is_and_how_its_list_sorts() -> None:
     attributes = feed_attributes("fi")
     assert attributes["feed_type"] == "nature"
-    assert attributes["legend"] == [{"color": "#2e7d32", "label": "havaintopaikka"}, {"color": "#d84315", "label": "huomionarvoinen"}]
+    assert attributes["legend"] == [
+        {"color": "#2e7d32", "label": "havaintopaikka"},
+        {"color": "#d84315", "label": "huomionarvoinen havainto"},
+    ]
     assert [key["property"] for key in attributes["list"]["sort"]] == ["distance_km", "updated"]
     assert attributes["list"]["default"] == "distance"
     assert attributes["list"]["count"] == "havaintopaikkaa"
-    assert feed_attributes("de")["legend"][1]["label"] == "notable", "other languages get the English texts"
+    assert feed_attributes("de")["legend"][1]["label"] == "notable sighting", "other languages get the English texts"

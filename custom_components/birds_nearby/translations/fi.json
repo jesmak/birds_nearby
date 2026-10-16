@@ -47,7 +47,7 @@
           "scan_interval": "Vähintään 15 minuuttia. Jokainen päivitys tekee kaksi pyyntöä eBirdiin.",
           "recent_days": "Kuinka monta viimepäivää viimeaikaiset-anturi ja kartta näyttävät.",
           "back_days": "Kun laji, jota ei ole nähty näin moneen päivään, havaitaan taas, siitä luodaan tapahtuma.",
-          "region": "eBirdin county tai alue, jonka lajilistaan havaintoa verrataan, esimerkiksi FI-02 tai US-NY-109. Valittu lähimmän havaintopaikan mukaan, kun alue lisättiin. Jätä tyhjäksi, jos ensihavaintoja ei tarvita."
+          "region": "eBirdin alue, jonka lajilistaan havaintoa verrataan, esimerkiksi FI-02 tai US-NY-109. Valittu lähimmän havaintopaikan mukaan, kun alue lisättiin. Jätä tyhjäksi, jos ensihavaintoja ei tarvita."
         }
       }
     },

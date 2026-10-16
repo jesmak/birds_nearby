@@ -22,8 +22,7 @@ COORDINATE_DECIMALS = 5
 # Commons' author field is free text, sometimes a sentence about the camera. The popup shows
 # this much of it; the sensors and events carry it in full.
 MAX_AUTHOR_LENGTH = 60
-# The integration's icon green, and orange for a place with a notable sighting. Sent with every
-# place, so the map is green even with versions of the map feed plugin that don't know birds.
+# The integration's icon green, and orange for a place with a notable sighting.
 BIRD_COLOR = "#2e7d32"
 NOTABLE_COLOR = "#d84315"
 
@@ -48,6 +47,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "hotspot_link": "Hotspot on eBird",
         "place": "sighting place",
         "places": "sighting places",
+        "notable_place": "notable sighting",
         "by_distance": "Distance",
         "by_newest": "Newest",
         "km": "{km} km",
@@ -63,6 +63,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "hotspot_link": "Havaintopaikka eBirdissä",
         "place": "havaintopaikka",
         "places": "havaintopaikkaa",
+        "notable_place": "huomionarvoinen havainto",
         "by_distance": "Etäisyys",
         "by_newest": "Uusimmat",
         "km": "{km} km",
@@ -92,7 +93,7 @@ def feed_attributes(language: str) -> dict[str, Any]:
     texts = TEXTS.get(language, TEXTS["en"])
     return {
         "feed_type": "nature",
-        "legend": [{"color": BIRD_COLOR, "label": texts["place"]}, {"color": NOTABLE_COLOR, "label": texts["notable"]}],
+        "legend": [{"color": BIRD_COLOR, "label": texts["place"]}, {"color": NOTABLE_COLOR, "label": texts["notable_place"]}],
         "list": {
             "sort": [
                 {"key": "distance", "label": texts["by_distance"], "property": "distance_km"},

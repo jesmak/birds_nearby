@@ -102,12 +102,12 @@ If eBird stops accepting the key, Home Assistant asks for a new one.
 
 ### Options
 
-| Name                     | Description                                                                                                           | Default                  |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------- | ------------------------ |
-| Update interval          | Minutes between updates, at least 15                                                                                  | 60                       |
-| Recent days              | How many of the latest days the recent sensor and the map show, 1–30                                                  | 7                        |
-| Back after               | A species unseen for this many days fires an event when it is seen again, 7–365                                       | 30                       |
-| Region for first records | The eBird county or region a sighting is compared with, such as `US-NY-109` or `FI-02`. Empty turns first records off | From the nearest hotspot |
+| Name                     | Type   | Description                                                                                                           | Default                  |
+| ------------------------ | ------ | --------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| Update interval          | number | Minutes between updates, at least 15                                                                                  | 60                       |
+| Recent days              | number | How many of the latest days the recent sensor and the map show, 1–30                                                  | 7                        |
+| Back after               | number | A species unseen for this many days fires an event when it is seen again, 7–365                                       | 30                       |
+| Region for first records | string | The eBird county or region a sighting is compared with, such as `US-NY-109` or `FI-02`. Empty turns first records off | From the nearest hotspot |
 
 When the area is added, the region is taken from the nearest eBird hotspot. That is its county where eBird has
 counties, otherwise its state or region (Finland has no counties in eBird, so a Finnish area gets a region such as
@@ -117,7 +117,7 @@ counties, otherwise its state or region (Finland has no counties in eBird, so a 
 
 | Sensor                                | State                                                          | Attributes                                                           |
 | ------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `sensor.birds_nearby_notable`         | Species among eBird's notable observations of the last 30 days | `sightings`: each notable observation, with `valid` and `reviewed`   |
+| `sensor.birds_nearby_notable`         | Species among eBird's notable observations of the last 30 days | `sightings`: the newest notable sighting of each species (below)     |
 | `sensor.birds_nearby_recent`          | Species seen in the recent days                                | `days`, and `species`: the newest sighting of each                   |
 | `sensor.birds_nearby_year_list`       | Species seen this year                                         | `year`, `since`, `species`, `last_year_since` and `expected` (below) |
 | `sensor.birds_nearby_sighting_places` | Places on the map                                              | The map feed                                                         |
@@ -132,6 +132,9 @@ clockwise from north), `direction` (the bearing as a word in Home Assistant's la
 `iucn_status` (the species' IUCN Red List category, such as `VU`), `url` (the species' page on eBird), and `picture`
 and `picture_credit` once its picture has been found. `bearing` and `direction` are empty at the centre itself, and
 `iucn_status` when Wikidata has no category for the species.
+
+A notable sighting also has `reports`, how many checklists reported the species as notable in the last 30 days,
+`valid` (false when eBird's reviewers rejected it) and `reviewed`.
 
 The year list's `species` has each species' `first_seen` this year and `last_year`, the day it was first seen last
 year. `last_year_since` is the day last year's list started, which is later than 1 January in the year the
@@ -253,11 +256,21 @@ entities:
     show_area: true
 ```
 
+## Upgrading from 1.1
+
+Nothing is required. Show the sightings with [map-feed-card](https://github.com/jesmak/map-feed-card), which
+replaces ha-map-card and its map feed plugin. The map feed's format is unchanged, so a map that reads it keeps
+working.
+
+The notable sensor's `sightings` lists each species once, its newest notable sighting, with `reports` saying how
+many checklists reported it. A template that counted the list's items as reports should read `reports` instead.
+Entity IDs, the year lists and everything else the integration remembers carry over.
+
 ## Data
 
 This is an unofficial integration, not affiliated with or endorsed by eBird or the Cornell Lab of Ornithology. Every
-user requests and enters an eBird API key of their own, and is bound by eBird's terms for it. If eBird objects to
-the integration, it will be withdrawn.
+user requests and enters an eBird API key of their own, and is bound by eBird's terms for it. Using the integration
+may be against eBird's terms and is at your own risk. If eBird objects to the integration, it will be withdrawn.
 
 ### eBird
 
@@ -265,8 +278,9 @@ Sightings come from the [eBird API 2.0](https://documenter.getpostman.com/view/6
 API key.
 
 - **Two requests per update:** recent observations and notable observations within the area. Every 60 minutes by
-  default, never more often than every 15 minutes, even when an update is asked for by hand or by an automation.
-  That's about 50 requests a day, plus one a day for the list of species ever recorded in your county or region, or
+  default and at least 15 minutes apart. An update asked for by hand or by an automation within 14 minutes of the
+  last one shows the same data again without asking eBird. Starting Home Assistant and saving the options update at
+  once. At the default interval that's about 50 requests a day, plus one a day for the list of species ever recorded in your county or region, or
   instead of it every other day, while species in the memory have no scientific name, for their names. When eBird
   can't be reached, the sensors are unavailable until the next update, which comes at the usual interval.
 - **Your location is rounded** to two decimals (about 1 km) before it is sent.
