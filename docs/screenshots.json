@@ -1,6 +1,6 @@
 {
     "resources": [
-        "../../hass-kortit/map-feed-card/dist/map-feed-card.js"
+        "../../hass-cards/map-feed-card/dist/map-feed-card.js"
     ],
     "clock": "2026-05-14T08:30:00+03:00",
     "translations": {
