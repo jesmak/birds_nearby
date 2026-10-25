@@ -269,8 +269,7 @@ Entity IDs, the year lists and everything else the integration remembers carry o
 ## Data
 
 This is an unofficial integration, not affiliated with or endorsed by eBird or the Cornell Lab of Ornithology. Every
-user requests and enters an eBird API key of their own, and is bound by eBird's terms for it. Using the integration
-may be against eBird's terms and is at your own risk. If eBird objects to the integration, it will be withdrawn.
+user requests and enters an eBird API key of their own, and is bound by eBird's terms for it.
 
 ### eBird
 
