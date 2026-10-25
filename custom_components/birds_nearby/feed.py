@@ -101,6 +101,7 @@ def feed_attributes(language: str) -> dict[str, Any]:
             ],
             "default": "distance",
             "count": texts["places"],
+            "count_one": texts["place"],
         },
     }
 

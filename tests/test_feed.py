@@ -159,4 +159,5 @@ def test_the_feed_says_what_it_is_and_how_its_list_sorts() -> None:
     assert [key["property"] for key in attributes["list"]["sort"]] == ["distance_km", "updated"]
     assert attributes["list"]["default"] == "distance"
     assert attributes["list"]["count"] == "havaintopaikkaa"
+    assert attributes["list"]["count_one"] == "havaintopaikka"
     assert feed_attributes("de")["legend"][1]["label"] == "notable sighting", "other languages get the English texts"
