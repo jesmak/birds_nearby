@@ -92,7 +92,8 @@ class EbirdClient:
                     raise EbirdError(f"eBird answered with status {response.status}")
                 return await response.json()
         except (aiohttp.ClientError, TimeoutError) as err:
-            raise EbirdError(f"eBird couldn't be reached: {err}") from err
+            # A timeout's message is empty, and the coordinator logs only the first failure, so the type is the cause.
+            raise EbirdError(f"eBird couldn't be reached: {str(err) or type(err).__name__}") from err
         except ValueError as err:
             raise EbirdError(f"eBird sent something unexpected: {err}") from err
 

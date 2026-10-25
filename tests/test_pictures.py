@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import aiohttp
 import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -101,3 +102,14 @@ async def test_an_unexpected_answer_is_a_wikimedia_error(hass: HomeAssistant, ai
     aioclient_mock.get(WIKIDATA_API, json={"query": ["not", "a", "dict"]})
     with pytest.raises(WikimediaError):
         await find_species(async_get_clientsession(hass), "exabir1", "Avis exempli")
+
+
+@pytest.mark.parametrize(
+    ("error", "cause"),
+    [(TimeoutError(), "TimeoutError"), (aiohttp.ClientConnectionError("Connection refused"), "Connection refused")],
+)
+async def test_an_error_without_a_message_is_named(hass: HomeAssistant, aioclient_mock: AiohttpClientMocker, error, cause) -> None:
+    aioclient_mock.get(WIKIDATA_API, exc=error)
+    with pytest.raises(WikimediaError) as raised:
+        await find_species(async_get_clientsession(hass), "exabir1", "Avis exempli")
+    assert str(raised.value) == f"{WIKIDATA_API} couldn't be read: {cause}"

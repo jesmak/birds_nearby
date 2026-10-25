@@ -198,7 +198,8 @@ async def _get(session: aiohttp.ClientSession, url: str, params: dict[str, Any])
                 raise WikimediaError(f"{url} answered with status {response.status}")
             payload = await response.json()
     except (aiohttp.ClientError, TimeoutError, ValueError) as err:
-        raise WikimediaError(f"{url} couldn't be read: {err}") from err
+        # A timeout's message is empty, so the type is the cause.
+        raise WikimediaError(f"{url} couldn't be read: {str(err) or type(err).__name__}") from err
     if not isinstance(payload, dict):
         raise WikimediaError(f"{url} sent something unexpected")
     return payload
