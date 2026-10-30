@@ -1,0 +1,52 @@
+{
+    "common": {
+        "name": "Lintuhavainnot",
+        "description": "Alueen huomionarvoiset havainnot, viimeaikaiset lajit ja vuosilista Birds Nearby -integraatiosta",
+        "title": "Lintuhavainnot",
+        "invalid_configuration": "Valitse alue Birds Nearby -integraatiosta",
+        "invalid_height": "Korkeuden pitää olla positiivinen määrä pikseleitä",
+        "no_area": "Aluetta ei löydy. Se on ehkä poistettu tai poistettu käytöstä Birds Nearby -integraatiossa.",
+        "not_found": "Anturia ei löydy. Se on ehkä poistettu käytöstä.",
+        "unavailable": "eBirdistä ei saada nyt tietoja"
+    },
+    "tabs": {
+        "notable": "Huomionarvoiset",
+        "recent": "Viimeaikaiset",
+        "year_list": "Vuosilista"
+    },
+    "empty": {
+        "notable": "Ei huomionarvoisia havaintoja 30 päivään",
+        "recent": "Ei havaintoja {days} päivään",
+        "year_list": "Tämän vuoden listalla ei ole vielä lajeja"
+    },
+    "row": {
+        "present": "läsnä",
+        "count_one": "{count} yks.",
+        "count_other": "{count} yks.",
+        "notable": "huomionarvoinen",
+        "unreviewed": "tarkastamaton",
+        "reports_one": "{count} havaintoerä 30 päivässä",
+        "reports_other": "{count} havaintoerää 30 päivässä",
+        "ebird": "Laji eBirdissä",
+        "no_picture": "Kuvaa ei löytynyt"
+    },
+    "year": {
+        "before_installation": "Ennen asennusta",
+        "last_year": "Viime vuonna {date}",
+        "species_one": "{count} laji",
+        "species_other": "{count} lajia"
+    },
+    "editor": {
+        "device": "Alue",
+        "title": "Otsikko",
+        "height_mode": "Korkeus",
+        "height_mode_helper": "Osioihin jaetun näkymän asettelu-välilehdellä asetettu korkeus ohittaa tämän.",
+        "height_mode_auto": "Sisällön mukaan",
+        "height_mode_fixed": "Kiinteä",
+        "height_mode_max": "Kasvaa rajaan asti",
+        "height": "Kiinteä korkeus",
+        "height_helper": "Kortti on aina näin korkea, ja lista vierii sen sisällä.",
+        "max_height": "Enimmäiskorkeus",
+        "max_height_helper": "Kortti kasvaa sisältönsä mukana tähän korkeuteen asti, ja sen jälkeen lista vierii."
+    }
+}

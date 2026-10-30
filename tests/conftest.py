@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from homeassistant.config_entries import ConfigEntryDisabler
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
@@ -125,13 +126,15 @@ def ebird(aioclient_mock: AiohttpClientMocker) -> AiohttpClientMocker:
     return aioclient_mock
 
 
-def birds_entry(hass: HomeAssistant, **options: Any) -> MockConfigEntry:
+def birds_entry(hass: HomeAssistant, *, area: int = 0, disabled: bool = False, **options: Any) -> MockConfigEntry:
+    """An area at the test point, or with `area` another one, which has a place of its own."""
     entry = MockConfigEntry(
         domain=DOMAIN,
         title="Birds Nearby",
         version=1,
         minor_version=1,
-        unique_id=f"{LATITUDE:.2f}_{LONGITUDE:.2f}",
+        unique_id=f"{LATITUDE:.2f}_{LONGITUDE:.2f}" if not area else f"area{area}",
+        disabled_by=ConfigEntryDisabler.USER if disabled else None,
         data={CONF_API_KEY: API_KEY, "latitude": LATITUDE, "longitude": LONGITUDE, CONF_RADIUS_KM: 25},
         options={CONF_SCAN_INTERVAL: 60, CONF_RECENT_DAYS: 7, CONF_BACK_DAYS: 30, CONF_REGION: REGION, **options},
     )

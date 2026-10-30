@@ -1,0 +1,52 @@
+{
+    "common": {
+        "name": "Birds Nearby",
+        "description": "An area's notable sightings, recent species and year list from the Birds Nearby integration",
+        "title": "Birds nearby",
+        "invalid_configuration": "Choose an area from the Birds Nearby integration",
+        "invalid_height": "The height must be a positive number of pixels",
+        "no_area": "The area isn't found. It may have been removed or disabled in the Birds Nearby integration.",
+        "not_found": "The sensor isn't found. It may be disabled.",
+        "unavailable": "No data from eBird right now"
+    },
+    "tabs": {
+        "notable": "Notable",
+        "recent": "Recent",
+        "year_list": "Year list"
+    },
+    "empty": {
+        "notable": "No notable sightings in the last 30 days",
+        "recent": "No sightings in the last {days} days",
+        "year_list": "No species on this year's list yet"
+    },
+    "row": {
+        "present": "present",
+        "count_one": "{count} bird",
+        "count_other": "{count} birds",
+        "notable": "notable",
+        "unreviewed": "not reviewed",
+        "reports_one": "{count} checklist in 30 days",
+        "reports_other": "{count} checklists in 30 days",
+        "ebird": "The species on eBird",
+        "no_picture": "No picture found"
+    },
+    "year": {
+        "before_installation": "Before installation",
+        "last_year": "Last year {date}",
+        "species_one": "{count} species",
+        "species_other": "{count} species"
+    },
+    "editor": {
+        "device": "Area",
+        "title": "Title",
+        "height_mode": "Height",
+        "height_mode_helper": "A height set in the layout tab of a sections view is used instead.",
+        "height_mode_auto": "Fits the content",
+        "height_mode_fixed": "Fixed",
+        "height_mode_max": "Grows up to a limit",
+        "height": "Fixed height",
+        "height_helper": "The card is always this tall, and the list scrolls inside it.",
+        "max_height": "Maximum height",
+        "max_height_helper": "The card grows with its content up to this height, and then the list scrolls."
+    }
+}

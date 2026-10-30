@@ -1,14 +1,14 @@
 # Birds Nearby for Home Assistant
 
 A Home Assistant integration for bird sightings within an area you choose, with the notable ones, your year list and
-first sightings of the year, and the sightings on a map.
+first sightings of the year, a dashboard card of its own and the sightings on a map.
 
 [![GitHub Release][releases-shield]][releases] [![GitHub Release Date][release-date-shield]][releases] [![HACS][hacs-shield]][hacs] [![License][license-shield]](LICENSE)
 
-<img src="https://raw.githubusercontent.com/jesmak/birds_nearby/main/docs/images/dashboard-light.png#gh-light-mode-only" width="1280" alt="A dashboard around Tampere, with a map of eight places where birds were seen, older ones fainter, and the list of them beside it, the place with a notable sighting open to its six species with their pictures and tags. Beside it the year list and recent species counts, and lists of the notable sighting, the newest species of the year compared with last year and the species seen by this date last year but not yet">
-<img src="https://raw.githubusercontent.com/jesmak/birds_nearby/main/docs/images/dashboard-dark.png#gh-dark-mode-only" width="1280" alt="A dashboard around Tampere, with a map of eight places where birds were seen, older ones fainter, and the list of them beside it, the place with a notable sighting open to its six species with their pictures and tags. Beside it the year list and recent species counts, and lists of the notable sighting, the newest species of the year compared with last year and the species seen by this date last year but not yet">
+<img src="https://raw.githubusercontent.com/jesmak/birds_nearby/main/docs/images/dashboard-light.png#gh-light-mode-only" width="1280" alt="A dashboard around Tampere, with a map of eight places where birds were seen, older ones fainter, and the list of them beside it, the place with a notable sighting open to its six species with their pictures and tags. Beside it the Birds Nearby card with the counts of notable sightings, recent species and the year list, open on the notable sighting with its picture">
+<img src="https://raw.githubusercontent.com/jesmak/birds_nearby/main/docs/images/dashboard-dark.png#gh-dark-mode-only" width="1280" alt="A dashboard around Tampere, with a map of eight places where birds were seen, older ones fainter, and the list of them beside it, the place with a notable sighting open to its six species with their pictures and tags. Beside it the Birds Nearby card with the counts of notable sightings, recent species and the year list, open on the notable sighting with its picture">
 
-The sightings in the picture are made up. The species pictures are from Wikimedia Commons. The Citrine Wagtail is by
+The sightings in the pictures are made up. The species pictures are from Wikimedia Commons. The Citrine Wagtail is by
 Ron Knight (CC BY 2.0), the Sedge Warbler by Charles J. Sharp (CC BY-SA 4.0), the Common Tern by MPF (CC BY-SA 4.0),
 the Horned Grebe by Ekaterina Chernetsova (CC BY 2.0), the Great Crested Grebe by JJ Harrison (CC BY-SA 3.0) and the
 Black-headed Gull by Hans Hillewaert (CC BY-SA 3.0).
@@ -24,6 +24,9 @@ year's, and you can see which species were here by this date last year but haven
 When something new turns up, it fires an event. That can be a notable sighting, a species' first sighting of the year, a
 species back after a while, or the first record of a species in your county or region. Your own automations decide what
 deserves a notification, and every event says how far away and in which direction the bird was seen.
+
+The integration comes with a [dashboard card](#birds-nearby-card) of its own, with the area's notable sightings, recent
+species and year list and the species' pictures.
 
 The sightings are also a map feed for [map-feed-card](https://github.com/jesmak/map-feed-card). Each place birds were
 seen is a point on the map, its details listing the species with their counts, times and pictures from Wikipedia. Species names follow
@@ -206,6 +209,58 @@ name, with its distance and direction from the area's centre below it. A persona
 for themselves, is titled with its distance and direction instead ("3.2 km southwest"). Its own name is whatever
 the observer typed, often an address, so it isn't shown.
 
+## Birds Nearby card
+
+<p>
+<img src="https://raw.githubusercontent.com/jesmak/birds_nearby/main/docs/images/card-notable-light.png#gh-light-mode-only" width="400" alt="The card with the counts of one notable sighting, 24 recent species and 87 species on the year list, open on the notable sighting, a Citrine Wagtail not yet reviewed, with its picture, place, count and time">
+<img src="https://raw.githubusercontent.com/jesmak/birds_nearby/main/docs/images/card-notable-dark.png#gh-dark-mode-only" width="400" alt="The card with the counts of one notable sighting, 24 recent species and 87 species on the year list, open on the notable sighting, a Citrine Wagtail not yet reviewed, with its picture, place, count and time">
+<img src="https://raw.githubusercontent.com/jesmak/birds_nearby/main/docs/images/card-recent-light.png#gh-light-mode-only" width="400" alt="The card on the recent species, each with its picture, scientific name, place, count and time, the Horned Grebe tagged VU, the list fading out at the bottom where it scrolls">
+<img src="https://raw.githubusercontent.com/jesmak/birds_nearby/main/docs/images/card-recent-dark.png#gh-dark-mode-only" width="400" alt="The card on the recent species, each with its picture, scientific name, place, count and time, the Horned Grebe tagged VU, the list fading out at the bottom where it scrolls">
+</p>
+
+The integration comes with a dashboard card for one area. The counts of its notable sightings, recent species and year
+list are tabs, and under them is the chosen list. The card opens on the notable sightings when there are any, otherwise
+on the recent species.
+
+The integration serves the card itself and adds it to the dashboards' resources when it starts, so the card is always
+the integration's own version. With the resources set in YAML (`resource_mode: yaml`), it can't add or update itself,
+and the log says which line to add, change or remove.
+
+### Card options
+
+The card has a visual editor. Add **Birds Nearby** from the card picker and choose the area. The card finds the area's
+sensors through its device, whatever they are called. The options can also be written by hand.
+
+| Name          | Type   | Description                                                                                                                                                                                                                                      | Default                                                                         |
+| ------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| `type`        | string | `custom:birds-nearby-card`                                                                                                                                                                                                                       | required                                                                        |
+| `device`      | string | The area's device                                                                                                                                                                                                                                | required                                                                        |
+| `title`       | string | Replaces the title, Birds nearby                                                                                                                                                                                                                 |                                                                                 |
+| `height_mode` | string | How tall the card is. `auto` fits its content, `fixed` keeps it at `height`, `max` lets it grow up to `max_height`. In `fixed` and `max` the list scrolls under the counts. A height in grid rows, set in the layout tab of a sections view, is used instead | `fixed` when `height` is set, `max` when only `max_height` is, otherwise `auto` |
+| `height`      | number | The card's height in pixels, for `fixed`                                                                                                                                                                                                         |                                                                                 |
+| `max_height`  | number | The card's greatest height in pixels, for `max`. The card picker sets 500, so a busy area's list doesn't take over the dashboard                                                                                                                  |                                                                                 |
+
+### The lists
+
+A sighting's row has the species' picture, or a bird where none was found, its name and scientific name, the place, and
+the count and time. A personal location shows only its distance and direction, as on the map, and a count the observer
+left out shows as present. The time is the observation's own, in the area's local time, so a sighting is shown with its
+date and never as today or yesterday. A recent species that is also notable is tagged as such, a notable sighting eBird
+hasn't reviewed yet is tagged as not reviewed, and a species vulnerable or worse on the IUCN Red List has its category.
+Tapping a row opens the species' picture at full width with its credit, the number of checklists a notable species was
+reported on, and a link to the species on eBird.
+
+The year list is grouped by the day each species was first seen, the newest day first. The species already seen when
+the integration was set up come last, as a group of their own, since their first day isn't known. A species seen last
+year shows the day it was first seen then. The pictures are those of the recent and notable sightings, so a species not
+seen lately has the bird instead.
+
+### Sizes
+
+The card fills a section by default and can be made as narrow as half of one. On a narrow card the counts are rows of
+their own and a row's count and time go under its place. Held to a height, the title and the counts stay in place and
+the list scrolls, fading out at its edge. The card never gets lower than a row of the list needs, at any width.
+
 ## Examples
 
 ### A rarity nearby
@@ -273,6 +328,9 @@ the newest sighting of each species in the 30 days before it, not the first. Ove
 memory are looked up in eBird's taxonomy. Spuhs, slashes and hybrids then leave the year lists, and a subspecies
 group listed beside its species merges into it. An automation reading `first_seen` should allow it to be empty.
 
+The [card](#birds-nearby-card) is added to the dashboards' resources by itself on the first start, ready to be added
+to a dashboard.
+
 ## Upgrading from 1.1
 
 The same as from 1.2, and the following. Show the sightings with [map-feed-card](https://github.com/jesmak/map-feed-card), which
@@ -323,6 +381,9 @@ its language code, such as `en.json` and `fi.json`. To add a language, copy `en.
 translate the values. The map popup's texts and the compass directions are in `TEXTS` and `DIRECTIONS` in
 `custom_components/birds_nearby/feed.py`. Species names come from eBird in Home Assistant's language.
 
+The card's texts are in `frontend/src/localize/languages/`, in the same way. The card finds a new file by itself and
+uses it when Home Assistant is set to that language. A text left out falls back to English.
+
 ## Development
 
 Requires Python 3.14.
@@ -337,6 +398,19 @@ python3.14 -m venv .venv
 Test data is made up. eBird's terms don't allow passing its data on, so real responses are never copied into the
 tests.
 
+The card is in `frontend/` and requires Node 22.13 or newer:
+
+```
+cd frontend
+npm install
+npm run check
+```
+
+`npm run check` typechecks, lints, checks formatting, runs the tests and builds
+`custom_components/birds_nearby/www/birds-nearby-card.js`, which is the file the integration serves and is committed to
+the repository. The card carries the integration's version from `manifest.json`. To have git refuse a commit whose
+built card doesn't match `frontend/`, run `git config core.hooksPath .githooks` once.
+
 | Path                           | What it contains                                                              |
 | ------------------------------ | ----------------------------------------------------------------------------- |
 | `__init__.py`                  | Setup                                                                         |
@@ -347,7 +421,9 @@ tests.
 | `coordinator.py`               | Updating, keeping the memory, firing events                                   |
 | `feed.py`                      | The map feed                                                                  |
 | `sensor.py`                    | The sensors                                                                   |
+| `card.py`, `www/`              | Serving the card and adding it to the dashboards' resources                   |
 | `translations/<language>.json` | Home Assistant UI texts                                                       |
+| `frontend/`                    | The card's source, tests and build                                            |
 
 ## Support
 

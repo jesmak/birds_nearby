@@ -1,6 +1,7 @@
 {
     "resources": [
-        "../../hass-cards/map-feed-card/dist/map-feed-card.js"
+        "../../hass-cards/map-feed-card/dist/map-feed-card.js",
+        "custom_components/birds_nearby/www/birds-nearby-card.js"
     ],
     "clock": "2026-05-14T08:30:00+03:00",
     "translations": {
@@ -16,13 +17,22 @@
                 "attribution": "Data provided by eBird.org (https://ebird.org)",
                 "sightings": [
                     {
+                        "species_code": "citwag",
                         "name": "Citrine Wagtail",
+                        "scientific_name": "Motacilla citreola",
                         "count": 1,
                         "observed": "2026-05-14T06:40",
                         "location": "Reed Bay",
                         "hotspot": true,
                         "distance_km": 3.9,
+                        "bearing": null,
                         "direction": "southwest",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/citwag",
+                        "picture": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/99/Citrine_Wagtail_%28Motacilla_citreola%29_%2814343964296%29.jpg/500px-Citrine_Wagtail_%28Motacilla_citreola%29_%2814343964296%29.jpg",
+                        "picture_credit": "Ron Knight from Seaford, East Sussex, United Kingdom, CC BY 2.0",
+                        "reports": 1,
+                        "valid": true,
                         "reviewed": false
                     }
                 ]
@@ -35,7 +45,357 @@
                 "unit_of_measurement": "species",
                 "state_class": "measurement",
                 "attribution": "Data provided by eBird.org (https://ebird.org)",
-                "days": 7
+                "days": 7,
+                "species": [
+                    {
+                        "species_code": "sedwar1",
+                        "name": "Sedge Warbler",
+                        "scientific_name": "Acrocephalus schoenobaenus",
+                        "count": 3,
+                        "observed": "2026-05-14T07:10",
+                        "location": "Reed Bay",
+                        "hotspot": true,
+                        "distance_km": 3.9,
+                        "bearing": null,
+                        "direction": "southwest",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/sedwar1",
+                        "picture": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Sedge_warbler_%28Acrocephalus_schoenobaenus%29_3.jpg/500px-Sedge_warbler_%28Acrocephalus_schoenobaenus%29_3.jpg",
+                        "picture_credit": "Charles J. Sharp, CC BY-SA 4.0"
+                    },
+                    {
+                        "species_code": "comter",
+                        "name": "Common Tern",
+                        "scientific_name": "Sterna hirundo",
+                        "count": 14,
+                        "observed": "2026-05-14T07:05",
+                        "location": "Reed Bay",
+                        "hotspot": true,
+                        "distance_km": 3.9,
+                        "bearing": null,
+                        "direction": "southwest",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/comter",
+                        "picture": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8e/2014-05-18_Sterna_hirundo%2C_Killingworth_Lake%2C_Northumberland_04.jpg/500px-2014-05-18_Sterna_hirundo%2C_Killingworth_Lake%2C_Northumberland_04.jpg",
+                        "picture_credit": "MPF, CC BY-SA 4.0"
+                    },
+                    {
+                        "species_code": "horgre",
+                        "name": "Horned Grebe",
+                        "scientific_name": "Podiceps auritus",
+                        "count": 2,
+                        "observed": "2026-05-14T06:55",
+                        "location": "Reed Bay",
+                        "hotspot": true,
+                        "distance_km": 3.9,
+                        "bearing": null,
+                        "direction": "southwest",
+                        "iucn_status": "VU",
+                        "url": "https://ebird.org/species/horgre",
+                        "picture": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/77/Podiceps_auritus_%2813909539717%29.jpg/500px-Podiceps_auritus_%2813909539717%29.jpg",
+                        "picture_credit": "Ekaterina Chernetsova (Papchinskaya) from Saint-Petersburg…, CC BY 2.0"
+                    },
+                    {
+                        "species_code": "grcgre1",
+                        "name": "Great Crested Grebe",
+                        "scientific_name": "Podiceps cristatus",
+                        "count": 6,
+                        "observed": "2026-05-14T06:50",
+                        "location": "Reed Bay",
+                        "hotspot": true,
+                        "distance_km": 3.9,
+                        "bearing": null,
+                        "direction": "southwest",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/grcgre1",
+                        "picture": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/27/Podiceps_cristatus_2_-_Lake_Dulverton.jpg/500px-Podiceps_cristatus_2_-_Lake_Dulverton.jpg",
+                        "picture_credit": "JJ Harrison (https://www.jjharrison.com.au/), CC BY-SA 3.0"
+                    },
+                    {
+                        "species_code": "bkhgul",
+                        "name": "Black-headed Gull",
+                        "scientific_name": "Chroicocephalus ridibundus",
+                        "count": 120,
+                        "observed": "2026-05-14T06:45",
+                        "location": "Reed Bay",
+                        "hotspot": true,
+                        "distance_km": 3.9,
+                        "bearing": null,
+                        "direction": "southwest",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/bkhgul",
+                        "picture": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/29/Chroicocephalus_ridibundus_%28summer%29.jpg/500px-Chroicocephalus_ridibundus_%28summer%29.jpg",
+                        "picture_credit": "Hans Hillewaert, CC BY-SA 3.0"
+                    },
+                    {
+                        "species_code": "citwag",
+                        "name": "Citrine Wagtail",
+                        "scientific_name": "Motacilla citreola",
+                        "count": 1,
+                        "observed": "2026-05-14T06:40",
+                        "location": "Reed Bay",
+                        "hotspot": true,
+                        "distance_km": 3.9,
+                        "bearing": null,
+                        "direction": "southwest",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/citwag",
+                        "picture": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/99/Citrine_Wagtail_%28Motacilla_citreola%29_%2814343964296%29.jpg/500px-Citrine_Wagtail_%28Motacilla_citreola%29_%2814343964296%29.jpg",
+                        "picture_credit": "Ron Knight from Seaford, East Sussex, United Kingdom, CC BY 2.0"
+                    },
+                    {
+                        "species_code": "sonthr1",
+                        "name": "Song Thrush",
+                        "scientific_name": "Turdus philomelos",
+                        "count": 2,
+                        "observed": "2026-05-14T05:35",
+                        "location": null,
+                        "hotspot": false,
+                        "distance_km": 5.2,
+                        "bearing": null,
+                        "direction": "northwest",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/sonthr1"
+                    },
+                    {
+                        "species_code": "eurrob1",
+                        "name": "European Robin",
+                        "scientific_name": "Erithacus rubecula",
+                        "count": 1,
+                        "observed": "2026-05-14T05:30",
+                        "location": null,
+                        "hotspot": false,
+                        "distance_km": 5.2,
+                        "bearing": null,
+                        "direction": "northwest",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/eurrob1"
+                    },
+                    {
+                        "species_code": "thrnig1",
+                        "name": "Thrush Nightingale",
+                        "scientific_name": "Luscinia luscinia",
+                        "count": 1,
+                        "observed": "2026-05-13T22:40",
+                        "location": "Lakeside Park",
+                        "hotspot": true,
+                        "distance_km": 1.8,
+                        "bearing": null,
+                        "direction": "northwest",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/thrnig1"
+                    },
+                    {
+                        "species_code": "wlwwar",
+                        "name": "Willow Warbler",
+                        "scientific_name": "Phylloscopus trochilus",
+                        "count": 5,
+                        "observed": "2026-05-13T18:25",
+                        "location": "Lakeside Park",
+                        "hotspot": true,
+                        "distance_km": 1.8,
+                        "bearing": null,
+                        "direction": "northwest",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/wlwwar"
+                    },
+                    {
+                        "species_code": "comcha",
+                        "name": "Common Chaffinch",
+                        "scientific_name": "Fringilla coelebs",
+                        "count": 8,
+                        "observed": "2026-05-13T18:20",
+                        "location": "Lakeside Park",
+                        "hotspot": true,
+                        "distance_km": 1.8,
+                        "bearing": null,
+                        "direction": "northwest",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/comcha"
+                    },
+                    {
+                        "species_code": "gretit1",
+                        "name": "Great Tit",
+                        "scientific_name": "Parus major",
+                        "count": 4,
+                        "observed": "2026-05-13T18:15",
+                        "location": "Lakeside Park",
+                        "hotspot": true,
+                        "distance_km": 1.8,
+                        "bearing": null,
+                        "direction": "northwest",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/gretit1"
+                    },
+                    {
+                        "species_code": "eurbla",
+                        "name": "Eurasian Blackbird",
+                        "scientific_name": "Turdus merula",
+                        "count": 3,
+                        "observed": "2026-05-13T18:10",
+                        "location": "Lakeside Park",
+                        "hotspot": true,
+                        "distance_km": 1.8,
+                        "bearing": null,
+                        "direction": "northwest",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/eurbla"
+                    },
+                    {
+                        "species_code": "lesbla1",
+                        "name": "Lesser Black-backed Gull",
+                        "scientific_name": "Larus fuscus",
+                        "count": 2,
+                        "observed": "2026-05-12T12:45",
+                        "location": "Harbour Point",
+                        "hotspot": true,
+                        "distance_km": 2.3,
+                        "bearing": null,
+                        "direction": "northeast",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/lesbla1"
+                    },
+                    {
+                        "species_code": "barswa",
+                        "name": "Barn Swallow",
+                        "scientific_name": "Hirundo rustica",
+                        "count": 12,
+                        "observed": "2026-05-12T12:30",
+                        "location": "Harbour Point",
+                        "hotspot": true,
+                        "distance_km": 2.3,
+                        "bearing": null,
+                        "direction": "northeast",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/barswa"
+                    },
+                    {
+                        "species_code": "comgol",
+                        "name": "Common Goldeneye",
+                        "scientific_name": "Bucephala clangula",
+                        "count": 9,
+                        "observed": "2026-05-12T12:10",
+                        "location": "Harbour Point",
+                        "hotspot": true,
+                        "distance_km": 2.3,
+                        "bearing": null,
+                        "direction": "northeast",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/comgol"
+                    },
+                    {
+                        "species_code": "comcuc",
+                        "name": "Common Cuckoo",
+                        "scientific_name": "Cuculus canorus",
+                        "count": 1,
+                        "observed": "2026-05-11T04:50",
+                        "location": null,
+                        "hotspot": false,
+                        "distance_km": 6.8,
+                        "bearing": null,
+                        "direction": "southwest",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/comcuc"
+                    },
+                    {
+                        "species_code": "comcra",
+                        "name": "Common Crane",
+                        "scientific_name": "Grus grus",
+                        "count": 3,
+                        "observed": "2026-05-10T07:45",
+                        "location": "Old Mill Pond",
+                        "hotspot": true,
+                        "distance_km": 4.5,
+                        "bearing": null,
+                        "direction": "east",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/comcra"
+                    },
+                    {
+                        "species_code": "norlap",
+                        "name": "Northern Lapwing",
+                        "scientific_name": "Vanellus vanellus",
+                        "count": 4,
+                        "observed": "2026-05-10T07:30",
+                        "location": "Old Mill Pond",
+                        "hotspot": true,
+                        "distance_km": 4.5,
+                        "bearing": null,
+                        "direction": "east",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/norlap"
+                    },
+                    {
+                        "species_code": "whoswa",
+                        "name": "Whooper Swan",
+                        "scientific_name": "Cygnus cygnus",
+                        "count": 2,
+                        "observed": "2026-05-10T07:20",
+                        "location": "Old Mill Pond",
+                        "hotspot": true,
+                        "distance_km": 4.5,
+                        "bearing": null,
+                        "direction": "east",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/whoswa"
+                    },
+                    {
+                        "species_code": "eurgre1",
+                        "name": "European Greenfinch",
+                        "scientific_name": "Chloris chloris",
+                        "count": 2,
+                        "observed": "2026-05-09T16:10",
+                        "location": null,
+                        "hotspot": false,
+                        "distance_km": 7.1,
+                        "bearing": null,
+                        "direction": "northeast",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/eurgre1"
+                    },
+                    {
+                        "species_code": "fieldf",
+                        "name": "Fieldfare",
+                        "scientific_name": "Turdus pilaris",
+                        "count": 6,
+                        "observed": "2026-05-09T16:00",
+                        "location": null,
+                        "hotspot": false,
+                        "distance_km": 7.1,
+                        "bearing": null,
+                        "direction": "northeast",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/fieldf"
+                    },
+                    {
+                        "species_code": "whiwag",
+                        "name": "White Wagtail",
+                        "scientific_name": "Motacilla alba",
+                        "count": 5,
+                        "observed": "2026-05-08T06:05",
+                        "location": "Meadow Shore",
+                        "hotspot": true,
+                        "distance_km": 5.7,
+                        "bearing": null,
+                        "direction": "southeast",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/whiwag"
+                    },
+                    {
+                        "species_code": "eurcur",
+                        "name": "Eurasian Curlew",
+                        "scientific_name": "Numenius arquata",
+                        "count": 2,
+                        "observed": "2026-05-08T05:50",
+                        "location": "Meadow Shore",
+                        "hotspot": true,
+                        "distance_km": 5.7,
+                        "bearing": null,
+                        "direction": "southeast",
+                        "iucn_status": "LC",
+                        "url": "https://ebird.org/species/eurcur"
+                    }
+                ]
             }
         },
         "sensor.birds_nearby_year_list": {
@@ -674,30 +1034,43 @@
                         "type": "grid",
                         "cards": [
                             {
-                                "type": "tile",
-                                "entity": "sensor.birds_nearby_year_list",
-                                "name": "Year list",
-                                "icon": "mdi:format-list-checks",
-                                "grid_options": {
-                                    "columns": 6
-                                }
-                            },
-                            {
-                                "type": "tile",
-                                "entity": "sensor.birds_nearby_recent",
-                                "name": "Recent",
-                                "icon": "mdi:binoculars",
-                                "grid_options": {
-                                    "columns": 6
-                                }
-                            },
-                            {
-                                "type": "markdown",
-                                "content": "{% set notable = state_attr('sensor.birds_nearby_notable', 'sightings') %}\n{% set year = state_attr('sensor.birds_nearby_year_list', 'species') %}\n{% set expected = state_attr('sensor.birds_nearby_year_list', 'expected') %}\n### Notable\n{% for s in notable %}**{{ s.name }}**, {{ s.location }}, {{ s.distance_km }} km {{ s.direction }}, {{ s.observed[11:] }}{{ '' if s.reviewed else ' (not yet reviewed)' }}\n{% endfor %}\n### New this year\n{% for s in year[:5] %}{% set days = (as_datetime(s.first_seen) - as_datetime(s.last_year | replace('2025-', '2026-'))).days if s.last_year else none %}**{{ s.name }}** {{ as_datetime(s.first_seen).strftime('%-d %b') }}{% if days is not none %}, {{ days | abs }} {{ 'day' if days | abs == 1 else 'days' }} {{ 'later' if days > 0 else 'earlier' }} than last year{% endif %}\n{% endfor %}\n### Seen by now last year\n{% for s in expected %}{{ s.name }} ({{ as_datetime(s.last_year).strftime('%-d %b') }}){{ ', ' if not loop.last }}{% endfor %}"
+                                "type": "custom:birds-nearby-card",
+                                "device": "birds",
+                                "max_height": 500
                             }
                         ]
                     }
                 ]
+            }
+        },
+        {
+            "name": "card-notable",
+            "width": 400,
+            "card": {
+                "type": "custom:birds-nearby-card",
+                "device": "birds",
+                "max_height": 500
+            }
+        },
+        {
+            "name": "card-recent",
+            "width": 400,
+            "card": {
+                "type": "custom:birds-nearby-card",
+                "device": "birds",
+                "max_height": 500
+            },
+            "states": {
+                "sensor.birds_nearby_notable": {
+                    "state": "0",
+                    "attributes": {
+                        "friendly_name": "Birds Nearby Notable",
+                        "unit_of_measurement": "species",
+                        "state_class": "measurement",
+                        "attribution": "Data provided by eBird.org (https://ebird.org)",
+                        "sightings": []
+                    }
+                }
             }
         }
     ]
