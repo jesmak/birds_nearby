@@ -123,6 +123,7 @@ class YearListSensor(BirdsSensor):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         memory = self.coordinator.memory
+        # Those seen before the installation, with no date, last.
         newest_first = sorted(memory.year_list.items(), key=lambda item: item[1], reverse=True)
         last_year = memory.last_year
         return {
@@ -132,7 +133,8 @@ class YearListSensor(BirdsSensor):
                 {
                     "species_code": code,
                     "name": memory.names.get(code, code),
-                    "first_seen": date.fromisoformat(first),
+                    # None for a species seen before the installation.
+                    "first_seen": date.fromisoformat(first) if first else None,
                     "last_year": memory.last_year_first_seen(code),
                 }
                 for code, first in newest_first

@@ -44,9 +44,35 @@ class Observation:
 
     @property
     def is_species(self) -> bool:
-        # Spuhs ("gull sp."), slashes and hybrids are reported too. They never make a
-        # first record in a region, so they are left out of that comparison.
-        return not any(mark in self.scientific for mark in ("sp.", "/", " x "))
+        return is_species(self.scientific)
+
+
+def is_species(scientific: str) -> bool:
+    """False for a spuh ("Larinae sp."), a slash between species ("Larus argentatus/smithsonianus") or a hybrid
+    ("Larus smithsonianus x fuscus"). They count as no species: not on a year list, and never a first record in a region.
+
+    eBird writes a species' two words first, so a subspecies group's, form's or intergrade's own slash or "x" comes
+    after them ("Motacilla alba alba/dukhunensis", "Junco hyemalis [oreganus Group] x mearnsi").
+    """
+    words = scientific.split()
+    return not (len(words) > 1 and ("sp." == words[1] or "/" in words[0] + words[1] or "x" in words[1:3]))
+
+
+def binomial(scientific: str) -> str:
+    """A species is its binomial. eBird's taxonomy gives a subspecies group's scientific name with its subspecies, its
+    sightings without it. A spuh's, slash's or hybrid's name is kept whole, so it is still known as one."""
+    return " ".join(scientific.split()[:2]) if is_species(scientific) else scientific
+
+
+@dataclass(frozen=True)
+class Taxon:
+    """What eBird's taxonomy says of a species code."""
+
+    scientific: str
+    name: str
+    # The code it counts as on a year list: itself for a species, its species for a subspecies group, and empty for a
+    # spuh, a slash or a hybrid.
+    counts_as: str
 
 
 def parse_observations(payload: Any) -> list[Observation]:
@@ -93,6 +119,8 @@ class Event:
     # species was last notable, so a rarity seen on many checklists can be told apart from a new one.
     first_in_region: bool = False
     days_since_notable: int | None = None
+    # For a first of the year: the code it went on the year list as, which for a subspecies group is its species'.
+    listed_as: str | None = None
 
 
 # Event kinds; the coordinator maps them to the events fired on the bus.
@@ -110,7 +138,8 @@ class Memory:
     # The day this year's list started: as far back as the year's first poll reached, which is 1 January when the
     # integration was running on it.
     year_started: str
-    # Species code: the date it was first seen this year.
+    # Species code: the date it was first seen this year. Empty for a species already seen when the integration was set
+    # up: eBird gives only the newest sighting of each species, so the first poll can't know when it was first seen.
     year_list: dict[str, str] = field(default_factory=dict)
     # Species code: the newest date it was seen, kept across years.
     last_seen: dict[str, str] = field(default_factory=dict)
@@ -124,9 +153,13 @@ class Memory:
     polled: str | None = None
     # Species code: the name eBird last gave it, in the language asked for.
     names: dict[str, str] = field(default_factory=dict)
-    # Species code: its scientific name. eBird's yearly taxonomy update gives some species new codes, and the
-    # scientific name is what links a new code to the memory of the old one. Empty for a code eBird no longer knows.
+    # Species code: its binomial (see binomial()). eBird's yearly taxonomy update gives some species new codes, and the
+    # binomial is what links a new code to the memory of the old one. Codes on a list with the same one are one
+    # species. Empty for a code eBird no longer knows, unless a sighting gave it one.
     scientific: dict[str, str] = field(default_factory=dict)
+    # Species code: the code it counts as on a year list, from eBird's taxonomy (Taxon.counts_as). A code not yet here
+    # is looked up in the day's extra call.
+    counts_as: dict[str, str] = field(default_factory=dict)
     # Species code: the day it was last among the notable observations. Only the last 30 days.
     notable_seen: dict[str, str] = field(default_factory=dict)
     # The region's species list: the one compared against, and the one fetched last.
@@ -135,13 +168,14 @@ class Memory:
     region_species: list[str] | None = None
     region_latest: list[str] | None = None
     region_fetched: str | None = None
-    # The day the day's extra call to eBird was last made, failed or not: the region's list or, while species in the
-    # memory have no scientific name, their names. One a day at most, across restarts and reloads.
+    # The day the day's extra call to eBird was last made, failed or not: the region's list or, while codes in the
+    # memory haven't been looked up in eBird's taxonomy, their taxonomy. One a day at most, across restarts and reloads.
     extra_call_tried: str | None = None
-    # The day the names were last asked for. They are asked every other day at most, so the region's list is never
-    # older than a day, even while eBird keeps failing to answer for the names.
+    # The day the taxonomy was last asked for. It is asked every other day at most, so the region's list is never
+    # older than a day, even while eBird keeps failing to answer for the taxonomy.
     names_asked: str | None = None
-    # Species already announced as a first record in the region, so a later checklist doesn't repeat it.
+    # Codes already announced as a first record in the region, so a later checklist doesn't repeat it. Read as the
+    # species they count as, so a group's lookup after its announcement counts too.
     region_announced: list[str] = field(default_factory=list)
     initialized: bool = False
 
@@ -155,6 +189,8 @@ class Memory:
         # so the day the list was last fetched counts too.
         earlier = max((day for day in (data.get("region_tried"), data.get("region_fetched")) if day), default=None)
         data = {"extra_call_tried": earlier, **data}
+        # Before 1.3.0 the taxonomy's names were kept as eBird gave them.
+        data["scientific"] = {code: binomial(name) for code, name in data.get("scientific", {}).items()}
         return cls(**{key: value for key, value in data.items() if key in cls.__dataclass_fields__})
 
     def as_dict(self) -> dict[str, Any]:
@@ -174,18 +210,95 @@ class Memory:
         self.region_latest = species
         self.region_fetched = today.isoformat()
 
-    def unnamed(self) -> list[str]:
-        """The codes in the memory whose scientific name hasn't been asked from eBird yet."""
-        codes = {*self.year_list, *self.last_seen, *(code for year in self.past_years.values() for code in year["first_seen"])}
-        return sorted(code for code in codes if code not in self.scientific)
+    def unknown(self) -> list[str]:
+        """The codes in the memory not yet looked up in eBird's taxonomy, also those seen but on no list, such as a
+        subspecies group listed under its species' code."""
+        codes = {
+            *self.scientific,
+            *self.year_list,
+            *self.last_seen,
+            *(code for year in self.past_years.values() for code in year["first_seen"]),
+        }
+        return sorted(code for code in codes if code not in self.counts_as)
+
+    def learn(self, asked: list[str], taxa: dict[str, Taxon]) -> None:
+        """The taxonomy of the codes asked for. A subspecies group's dates move to its species, and the dates of a code
+        that counts as no species are dropped from the year lists."""
+        for code in asked:
+            taxon = taxa.get(code)
+            if taxon is None:
+                # A code eBird no longer knows stays as it is, unless its name says it counts as no species, and isn't
+                # asked for again.
+                self.scientific.setdefault(code, "")
+                self.counts_as[code] = code if is_species(self.scientific[code]) else ""
+                if not self.counts_as[code]:
+                    self._count_as(code, "")
+                continue
+            self.scientific[code] = binomial(taxon.scientific)
+            self.names[code] = taxon.name
+            self.counts_as[code] = taxon.counts_as
+            if taxon.counts_as != code:
+                self._count_as(code, taxon.counts_as)
+
+    def _count_as(self, code: str, species: str) -> None:
+        # The earliest first sighting, and an empty date (before the installation) is earlier than any.
+        for dates in self._first_dates():
+            if code in dates:
+                first = dates.pop(code)
+                if species:
+                    dates[species] = min(first, dates[species]) if species in dates else first
+        if species:
+            self._repoint(code, species)
+        if species and code in self.last_seen:
+            last = self.last_seen.pop(code)
+            self.last_seen[species] = max(last, self.last_seen.get(species, last))
+        if species:
+            # Until the species itself is looked up, it goes by its group's name, and is matched by its group's binomial.
+            self.names.setdefault(species, self.names.get(code, code))
+            if self.scientific.get(code):
+                self.scientific.setdefault(species, self.scientific[code])
+
+    def _repoint(self, old: str, new: str) -> None:
+        """The codes that counted as the old code count as the new one: a species' groups follow it."""
+        self.counts_as = {code: new if counted == old else counted for code, counted in self.counts_as.items()}
+
+    def _first_dates(self) -> tuple[dict[str, str], ...]:
+        return (self.year_list, *(year["first_seen"] for year in self.past_years.values()))
+
+    def listed_as(self, observation: Observation, first_dates: dict[str, str]) -> str | None:
+        """The code an observation goes on a year list as, None when it counts as no species."""
+        code = observation.species
+        if code in self.counts_as:
+            listed = self.counts_as[code]
+            if not listed:
+                return None
+        elif not observation.is_species:
+            return None
+        else:
+            listed = code
+        # Codes with the same binomial on a list are one species, looked up or not. Until a group is looked up, it can be on
+        # the list under its own code.
+        name = binomial(observation.scientific)
+        if listed not in first_dates and name:
+            return next((other for other in first_dates if self.scientific.get(other) == name), listed)
+        return listed
+
+    def forget_backfill(self, installed: date) -> None:
+        """Storage version 2. Before it, the first poll gave each species already seen its newest sighting in eBird's 30
+        days as its first date. The dates up to the day of installation are dropped. Spuhs, slashes and hybrids leave
+        the lists once the taxonomy is looked up, as every code is after the upgrade."""
+        day = installed.isoformat()
+        for dates in self._first_dates():
+            for code, first in dates.items():
+                if first <= day:
+                    dates[code] = ""
 
     def rename(self, old: str, new: str) -> None:
         """Moves everything remembered of a species from its old code to the new one eBird gave it.
 
         Where both codes have a date, the first sighting is the earlier one and the last sighting the later one.
         """
-        first_dates = (self.year_list, *(year["first_seen"] for year in self.past_years.values()))
-        for codes, keep in ((self.last_seen, max), (self.notable_seen, max), *((dates, min) for dates in first_dates)):
+        for codes, keep in ((self.last_seen, max), (self.notable_seen, max), *((dates, min) for dates in self._first_dates())):
             if old in codes:
                 codes[new] = keep(codes[old], codes[new]) if new in codes else codes[old]
                 del codes[old]
@@ -193,6 +306,9 @@ class Memory:
             if old in codes:
                 codes.setdefault(new, codes[old])
                 del codes[old]
+        # The new code is looked up on its own.
+        self.counts_as.pop(old, None)
+        self._repoint(old, new)
         prefix = f"{old}/"
         self.seen = {f"{new}/{key[len(prefix) :]}" if key.startswith(prefix) else key: day for key, day in self.seen.items()}
         self.pending = [f"{new}/{key[len(prefix) :]}" if key.startswith(prefix) else key for key in self.pending]
@@ -210,6 +326,7 @@ class Memory:
         return self.past_years.get(str(self.year - 1))
 
     def last_year_first_seen(self, species: str) -> date | None:
+        """None also for a species seen before the installation, whose first date isn't known."""
         last_year = self.last_year
         first = last_year["first_seen"].get(species) if last_year else None
         return date.fromisoformat(first) if first else None
@@ -234,7 +351,7 @@ class Memory:
         found = [
             (species, date.fromisoformat(first))
             for species, first in last_year["first_seen"].items()
-            if species not in self.year_list and same_day(date.fromisoformat(first), today.year) <= today
+            if first and species not in self.year_list and same_day(date.fromisoformat(first), today.year) <= today
         ]
         return sorted(found, key=lambda item: item[1])
 
@@ -261,7 +378,7 @@ def remember(
 ) -> list[Event]:
     """Adds a poll's observations to the memory, and returns the events they cause.
 
-    The first poll only fills the memory from the last 30 days, without events.
+    The first poll only fills the memory from the last 30 days, without events, and with no first dates.
     """
     if today.year != memory.year:
         memory.past_years[str(memory.year)] = {"since": memory.year_started, "first_seen": memory.year_list}
@@ -273,6 +390,11 @@ def remember(
 
     region_known = set(memory.region_species or [])
     announced = set(memory.region_announced)
+    # A first record is judged by the species a code counts as: eBird's region list has species' codes, never their
+    # groups'. An announced group counts as its species also when it was looked up after it was announced, and before
+    # its lookup, a group is known by its species' binomial.
+    known = region_known | {memory.counts_as.get(code) or code for code in announced}
+    known_names = {memory.scientific[code] for code in known | announced if memory.scientific.get(code)}
     pending = set(memory.pending)
     notable_keys = {observation.key for observation in notable}
     # A notable report counts for the lists only once eBird has reviewed and accepted it.
@@ -285,7 +407,7 @@ def remember(
     for observation in sorted([*recent, *notable], key=lambda item: item.observed):
         memory.names[observation.species] = observation.name
         if observation.scientific:
-            memory.scientific[observation.species] = observation.scientific
+            memory.scientific[observation.species] = binomial(observation.scientific)
         key = observation.key
         seen_on = observation.observed.date()
         if seen_on.year > memory.year:
@@ -299,8 +421,9 @@ def remember(
         first_in_region = (
             memory.region_species is not None
             and observation.is_species
-            and observation.species not in region_known
-            and observation.species not in announced
+            and memory.counts_as.get(observation.species) != ""
+            and memory.counts_as.get(observation.species, observation.species) not in known
+            and binomial(observation.scientific) not in known_names
         )
         if is_new and notable_here:
             earlier = memory.notable_seen.get(observation.species)
@@ -322,28 +445,36 @@ def remember(
             continue
         pending.discard(key)
 
-        is_new_this_year = seen_on.year == memory.year and observation.species not in memory.year_list
-        previous = memory.last_seen.get(observation.species)
+        # The year's list, also last year's for a checklist uploaded late. One of the last days of December can reach
+        # eBird after New Year.
+        past = memory.past_years.get(str(seen_on.year))
+        first_dates = memory.year_list if seen_on.year == memory.year else past["first_seen"] if past else None
+        listed_as = memory.listed_as(observation, first_dates if first_dates is not None else {})
+        is_new_this_year = listed_as is not None and seen_on.year == memory.year and listed_as not in memory.year_list
+        # A subspecies group is last seen as its species, a spuh as itself.
+        species = listed_as or observation.species
+        previous = memory.last_seen.get(species)
         days_unseen = (seen_on - date.fromisoformat(previous)).days if previous else None
 
         if memory.initialized:
             if is_new_this_year:
-                events.append(Event(FIRST_OF_YEAR, observation, notable=notable_here))
+                events.append(Event(FIRST_OF_YEAR, observation, notable=notable_here, listed_as=listed_as))
             if watched and days_unseen is not None and days_unseen >= back_days:
                 events.append(Event(BACK, observation, notable=notable_here, days_unseen=days_unseen))
             if first_in_region:
                 announced.add(observation.species)
+                known.add(memory.counts_as.get(observation.species) or observation.species)
+                known_names.add(binomial(observation.scientific))
                 events.append(Event(FIRST_IN_REGION, observation, notable=notable_here))
 
-        # The earliest day of the year the species was seen, also from a checklist uploaded late. One of the last days of
-        # December can reach eBird after New Year.
-        past = memory.past_years.get(str(seen_on.year))
-        first_dates = memory.year_list if seen_on.year == memory.year else past["first_seen"] if past else None
-        first = first_dates.get(observation.species) if first_dates is not None else None
-        if first_dates is not None and (first is None or seen_on.isoformat() < first):
-            first_dates[observation.species] = seen_on.isoformat()
+        # The earliest day of the year the species was seen, also from a checklist uploaded late. An empty date stays
+        # empty: the species was seen before the installation.
+        if first_dates is not None and listed_as is not None:
+            first = first_dates.get(listed_as)
+            if first is None or seen_on.isoformat() < first:
+                first_dates[listed_as] = seen_on.isoformat() if memory.initialized else ""
         if previous is None or seen_on.isoformat() > previous:
-            memory.last_seen[observation.species] = seen_on.isoformat()
+            memory.last_seen[species] = seen_on.isoformat()
 
     # Every notable sighting counts as seen, also one handled before an upgrade that started keeping these dates.
     for observation in notable:
@@ -363,17 +494,21 @@ def remember(
 
 
 def follow_new_codes(memory: Memory, observations: list[Observation]) -> None:
-    """Moves the memory of species that eBird has given a new code, recognised by their scientific name.
+    """Moves the memory of species that eBird has given a new code, recognised by their binomial.
 
     When the old code is still in use too, the species was split and both are species of their own.
     """
     in_use = {observation.species for observation in observations}
-    by_name = {name: code for code, name in memory.scientific.items() if name}
+    # Only a code that counts as itself can be a species' old code, never a subspecies group the taxonomy has named. Of
+    # the codes sharing a binomial, a looked-up species comes last and wins.
+    codes = sorted(memory.scientific.items(), key=lambda item: item[0] in memory.counts_as)
+    by_name = {name: code for code, name in codes if name and memory.counts_as.get(code, code) == code}
     for observation in observations:
-        old = by_name.get(observation.scientific)
+        name = binomial(observation.scientific)
+        old = by_name.get(name)
         if observation.species not in memory.scientific and old and old not in in_use and observation.is_species:
             memory.rename(old, observation.species)
-            by_name[observation.scientific] = observation.species
+            by_name[name] = observation.species
 
 
 def newest_first(observations: list[Observation]) -> list[Observation]:

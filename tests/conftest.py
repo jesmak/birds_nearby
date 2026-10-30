@@ -107,11 +107,12 @@ def answer(
     recent: list[dict[str, Any]] = RECENT,
     notable: list[dict[str, Any]] | None = None,
 ) -> None:
-    """eBird's answers, and Wikimedia knowing none of the species."""
+    """eBird's answers, its taxonomy and Wikimedia knowing none of the species."""
     aioclient_mock.get(f"{EBIRD_URL}/ref/hotspot/geo", json=HOTSPOTS)
     aioclient_mock.get(f"{EBIRD_URL}/data/obs/geo/recent/notable", json=notable or [])
     aioclient_mock.get(f"{EBIRD_URL}/data/obs/geo/recent", json=recent)
     aioclient_mock.get(f"{EBIRD_URL}/product/spplist/{REGION}", json=REGION_SPECIES)
+    aioclient_mock.get(f"{EBIRD_URL}/ref/taxonomy/ebird", json=[])
     aioclient_mock.get(WIKIDATA_API, json={"query": {"search": []}})
     aioclient_mock.get(WIKIPEDIA_API, json={})
     aioclient_mock.get(COMMONS_API, json={})

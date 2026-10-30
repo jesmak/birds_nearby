@@ -32,15 +32,23 @@ Home Assistant's language where eBird has them, otherwise they are in English.
 ### What it can't do
 
 eBird's API looks back 30 days at most, so anything that needs a longer memory is counted from the day the
-integration is set up. The year list and first sightings of the year start 30 days before installation, and the
-first year is incomplete. The first update fills the lists from those 30 days without firing any events. First
-sightings are compared with last year's only once a year's list has run from 1 January.
+integration is set up. The first update fills the lists from the last 30 days without firing any events, and the
+first year is incomplete. eBird gives only the newest sighting of each species, so the species already seen then are
+on the year list without the day they were first seen. First sightings are compared with last year's only once a
+year's list has run from 1 January.
 
 When eBird updates its taxonomy, usually in October, some species get new codes. A species whose scientific name
 stays the same is followed to its new code, with its year list date and history. One that also gets a new scientific
 name, as after some splits, looks like a new species, and its first sighting under the new name is a first of the
-year. After an upgrade, the scientific names of the species already in the memory are asked from eBird using the day's
-extra call instead of the region's list, never two days in a row.
+year.
+
+A subspecies group, such as Gambel's White-crowned Sparrow, counts as its species on the year list, as in eBird, and
+so does a form or an intergrade that eBird counts as its species.
+Spuhs ("gull sp."), slashes and hybrids count as no species, so they are on no year list and fire no first of the
+year. A group seen before its species is the species' first of the year, under the group's name. Which species a
+group belongs to comes from eBird's taxonomy, asked for every species new to the integration using the day's extra
+call instead of the region's list, never two days in a row. Until then a group and its species count as one, since
+they share a scientific name.
 
 The radius is at most 50 km, which is eBird's limit. Birds only.
 
@@ -137,7 +145,8 @@ A notable sighting also has `reports`, how many checklists reported the species 
 `valid` (false when eBird's reviewers rejected it) and `reviewed`.
 
 The year list's `species` has each species' `first_seen` this year and `last_year`, the day it was first seen last
-year. `last_year_since` is the day last year's list started, which is later than 1 January in the year the
+year, newest first. `first_seen` is empty for a species already seen when the integration was set up, and those come
+last. `last_year_since` is the day last year's list started, which is later than 1 January in the year the
 integration was set up. `expected` lists the species seen by this date last year but not yet this year, each with
 its `last_year` date, the earliest first.
 
@@ -171,7 +180,8 @@ After a gap in the updates longer than "Back after", such as Home Assistant bein
 species counts as back on the first update, since any of them would look like it.
 
 The first record in a region is compared with the region's species list from the day before, so the sighting itself
-can't hide it. Spuhs ("gull sp."), slashes and hybrids are never first records.
+can't hide it. Spuhs ("gull sp."), slashes and hybrids are never first records. A subspecies group is one only when its
+species is new to the region, since eBird's list has species, not their groups.
 
 ## The map
 
@@ -256,9 +266,16 @@ entities:
     show_area: true
 ```
 
+## Upgrading from 1.2
+
+Nothing is required. The year list's species up to the day the integration was set up lose their dates, which were
+the newest sighting of each species in the 30 days before it, not the first. Over the next days the species in the
+memory are looked up in eBird's taxonomy. Spuhs, slashes and hybrids then leave the year lists, and a subspecies
+group listed beside its species merges into it. An automation reading `first_seen` should allow it to be empty.
+
 ## Upgrading from 1.1
 
-Nothing is required. Show the sightings with [map-feed-card](https://github.com/jesmak/map-feed-card), which
+The same as from 1.2, and the following. Show the sightings with [map-feed-card](https://github.com/jesmak/map-feed-card), which
 replaces ha-map-card and its map feed plugin. The map feed's format is unchanged, so a map that reads it keeps
 working.
 
@@ -280,7 +297,7 @@ API key.
   default and at least 15 minutes apart. An update asked for by hand or by an automation within 14 minutes of the
   last one shows the same data again without asking eBird. Starting Home Assistant and saving the options update at
   once. At the default interval that's about 50 requests a day, plus one a day for the list of species ever recorded in your county or region, or
-  instead of it every other day, while species in the memory have no scientific name, for their names. When eBird
+  instead of it every other day, while species new to the integration are waiting, for their taxonomy. When eBird
   can't be reached, the sensors are unavailable until the next update, which comes at the usual interval.
 - **Your location is rounded** to two decimals (about 1 km) before it is sent.
 - **No observer names.** Only eBird's simple detail level is requested, which leaves them out.

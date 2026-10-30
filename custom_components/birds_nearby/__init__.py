@@ -9,7 +9,7 @@ from __future__ import annotations
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-from .coordinator import BirdsConfigEntry, BirdsCoordinator, memory_store
+from .coordinator import BirdsConfigEntry, BirdsCoordinator, MemoryStore
 
 PLATFORMS = [Platform.SENSOR]
 
@@ -32,4 +32,4 @@ async def async_unload_entry(hass: HomeAssistant, entry: BirdsConfigEntry) -> bo
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: BirdsConfigEntry) -> None:
-    await memory_store(hass, entry.entry_id).async_remove()
+    await MemoryStore(hass, entry).async_remove()

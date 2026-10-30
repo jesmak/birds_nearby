@@ -11,7 +11,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import EBIRD_URL, REQUEST_DECIMALS, USER_AGENT, WINDOW_DAYS
 from .exceptions import EbirdAuthError, EbirdError
-from .sightings import Observation, parse_observations
+from .sightings import Observation, Taxon, is_species, parse_observations
 
 TIMEOUT = aiohttp.ClientTimeout(total=30)
 
@@ -62,13 +62,13 @@ class EbirdClient:
             raise EbirdError(f"eBird sent the species of {region} in an unexpected format")
         return species
 
-    async def scientific_names(self, codes: list[str]) -> dict[str, str]:
-        """The scientific names of these species codes. A code eBird no longer knows is left out."""
-        taxa = await self._get("ref/taxonomy/ebird", {"species": ",".join(codes), "fmt": "json"})
+    async def taxonomy(self, codes: list[str], locale: str) -> dict[str, Taxon]:
+        """What eBird's taxonomy says of these species codes. A code eBird no longer knows is left out."""
+        taxa = await self._get("ref/taxonomy/ebird", {"species": ",".join(codes), "locale": locale, "fmt": "json"})
         if not isinstance(taxa, list):
             raise EbirdError("eBird sent the taxonomy in an unexpected format")
         return {
-            taxon["speciesCode"]: taxon["sciName"]
+            taxon["speciesCode"]: _taxon(taxon)
             for taxon in taxa
             if isinstance(taxon, dict) and isinstance(taxon.get("speciesCode"), str) and isinstance(taxon.get("sciName"), str)
         }
@@ -103,6 +103,19 @@ def _observations(payload: Any) -> list[Observation]:
         return parse_observations(payload)
     except ValueError as err:
         raise EbirdError(f"eBird sent the observations in an unexpected format: {err}") from err
+
+
+def _taxon(taxon: dict[str, Any]) -> Taxon:
+    code, scientific = taxon["speciesCode"], taxon["sciName"]
+    # A subspecies group (category "issf") reports as its species. A hybrid has no reportAs, and a spuh's or a
+    # slash's scientific name gives it away.
+    report_as = taxon.get("reportAs")
+    if isinstance(report_as, str) and report_as:
+        counts_as = report_as
+    else:
+        counts_as = "" if taxon.get("category") == "hybrid" or not is_species(scientific) else code
+    name = taxon.get("comName")
+    return Taxon(scientific=scientific, name=name if isinstance(name, str) and name else code, counts_as=counts_as)
 
 
 def distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:

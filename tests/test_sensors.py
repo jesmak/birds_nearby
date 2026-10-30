@@ -123,6 +123,7 @@ async def test_a_rarity_on_the_next_poll(
         "first_seen": NOW.date(),
         "last_year": None,
     }
+    assert [item["first_seen"] for item in year_list.attributes["species"][1:]] == [None, None], "seen before the installation"
     # The region's list is fetched once a day, not on every poll.
     assert not any("spplist" in str(call[1]) for call in ebird.mock_calls)
 
@@ -269,19 +270,42 @@ async def test_an_unexpected_observation_fails_the_update_cleanly(
     assert "unexpected format" in str(entry.runtime_data.last_exception)
 
 
-async def test_an_older_memory_asks_for_its_species_scientific_names_instead_of_the_region_list(
-    enable_custom_integrations, hass: HomeAssistant, hass_storage, ebird: AiohttpClientMocker
+async def test_a_memory_from_1_2_forgets_its_backfill_and_looks_up_its_taxonomy(
+    enable_custom_integrations, hass: HomeAssistant, hass_storage, ebird: AiohttpClientMocker, freezer: FrozenDateTimeFactory
 ) -> None:
-    # A memory from before scientific names were kept: two species on the year list, no names.
+    # Installed on the evening of 1 October, already 2 October in UTC. The first poll dated each species by its newest
+    # sighting, and kept a hybrid.
+    freezer.move_to(datetime(2026, 10, 1, 20, 0, tzinfo=dt_util.get_default_time_zone()))
     entry = birds_entry(hass)
-    memory = Memory.new(NOW.date())
-    memory.year_list = {"eurbla": "2026-04-02", "comswi": "2026-05-10", "oldcod1": "2026-03-01"}
+    freezer.move_to(NOW.replace(tzinfo=dt_util.get_default_time_zone()))
+    memory = Memory.new(datetime(2026, 10, 1).date())
+    memory.year_list = {
+        "eurbla": "2026-09-28",
+        "comswi": "2026-10-02",
+        "gwcspa": "2026-10-03",
+        "x01134": "2026-10-06",
+        "oldcod1": "2026-10-01",
+    }
+    memory.scientific = {"eurbla": "Turdus merula", "x01134": "Larus smithsonianus x fuscus"}
     memory.initialized = True
     stored = memory.as_dict()
-    del stored["scientific"]
+    del stored["counts_as"]
     hass_storage[f"birds_nearby.{entry.entry_id}"] = {"version": 1, "key": f"birds_nearby.{entry.entry_id}", "data": {"memory": stored}}
     ebird.clear_requests()
-    ebird.get(f"{EBIRD_URL}/ref/taxonomy/ebird", json=[{"speciesCode": "comswi", "sciName": "Apus apus"}])
+    ebird.get(
+        f"{EBIRD_URL}/ref/taxonomy/ebird",
+        json=[
+            {"speciesCode": "comswi", "sciName": "Apus apus", "comName": "Tervapääsky", "category": "species"},
+            {"speciesCode": "x01134", "sciName": "Larus smithsonianus x fuscus", "comName": "Example Hybrid", "category": "hybrid"},
+            {
+                "speciesCode": "gwcspa",
+                "sciName": "Zonotrichia leucophrys gambelii",
+                "comName": "Juovapääsirkku (gambelii)",
+                "category": "issf",
+                "reportAs": "whcspa",
+            },
+        ],
+    )
     answer(ebird)
 
     assert await hass.config_entries.async_setup(entry.entry_id)
@@ -290,12 +314,24 @@ async def test_an_older_memory_asks_for_its_species_scientific_names_instead_of_
     calls = [call[1].path.removeprefix("/v2/") for call in ebird.mock_calls if str(call[1]).startswith(EBIRD_URL)]
     assert sorted(calls) == ["data/obs/geo/recent", "data/obs/geo/recent/notable", "ref/taxonomy/ebird"], "still one extra call"
     taxonomy = next(call for call in ebird.mock_calls if call[1].path.endswith("taxonomy/ebird"))
-    assert taxonomy[1].query["species"] == "comswi,eurbla,oldcod1"
+    assert taxonomy[1].query["species"] == "comswi,eurbla,gwcspa,oldcod1,x01134"
     memory = entry.runtime_data.memory
-    assert memory.scientific["comswi"] == "Apus apus"
-    # A code eBird no longer knows gets an empty name, so it isn't asked for again.
-    assert memory.scientific["oldcod1"] == ""
-    assert memory.unnamed() == []
+    # Up to the day of installation no date, the hybrid off the list, and the subspecies group as its species. The poll
+    # brought a species the memory didn't have.
+    assert memory.year_list == {"eurbla": "", "comswi": "2026-10-02", "whcspa": "2026-10-03", "oldcod1": "", "hoocro1": "2026-10-09"}
+    assert memory.names["comswi"] == "Tervapääsky"
+    # A code eBird no longer knows stays as it is, and isn't asked for again.
+    assert memory.counts_as["oldcod1"] == "oldcod1"
+    assert memory.unknown() == ["hoocro1", "whcspa"], "the new species, and the group's species for its name"
+
+    species = hass.states.get("sensor.birds_nearby_year_list").attributes["species"]
+    assert [(item["species_code"], item["first_seen"]) for item in species] == [
+        ("hoocro1", datetime(2026, 10, 9).date()),
+        ("whcspa", datetime(2026, 10, 3).date()),
+        ("comswi", datetime(2026, 10, 2).date()),
+        ("eurbla", None),
+        ("oldcod1", None),
+    ]
 
 
 async def test_an_event_carries_its_species_picture(
@@ -321,10 +357,10 @@ async def test_an_event_carries_its_species_picture(
     assert events[0].data["iucn_status"] == "LC"
 
 
-async def test_names_are_asked_every_other_day_at_most(
+async def test_the_taxonomy_is_asked_every_other_day_at_most(
     enable_custom_integrations, hass: HomeAssistant, aioclient_mock: AiohttpClientMocker, freezer: FrozenDateTimeFactory
 ) -> None:
-    # eBird keeps failing to answer for the names: the region's list still comes every other day.
+    # eBird keeps failing to answer for the taxonomy: the region's list still comes every other day.
     aioclient_mock.get(f"{EBIRD_URL}/ref/taxonomy/ebird", status=500)
     answer(aioclient_mock)
     entry = birds_entry(hass)
@@ -335,7 +371,7 @@ async def test_names_are_asked_every_other_day_at_most(
     calls = []
     for _ in range(4):
         coordinator.memory.year_list["oldcod1"] = "2026-03-01"
-        coordinator.memory.scientific.pop("oldcod1", None)
+        coordinator.memory.counts_as.pop("oldcod1", None)
         aioclient_mock.clear_requests()
         answer(aioclient_mock)
         aioclient_mock.get(f"{EBIRD_URL}/ref/taxonomy/ebird", status=500)
@@ -344,4 +380,4 @@ async def test_names_are_asked_every_other_day_at_most(
         extra = [call[1].path for call in aioclient_mock.mock_calls if "taxonomy" in str(call[1]) or "spplist" in str(call[1])]
         calls.append([path.rsplit("/", 2)[-2] for path in extra])
 
-    assert calls == [["taxonomy"], ["spplist"], ["taxonomy"], ["spplist"]], "one extra call a day, and never two days of names"
+    assert calls == [["taxonomy"], ["spplist"], ["taxonomy"], ["spplist"]], "one extra call a day, and never two days of taxonomy"

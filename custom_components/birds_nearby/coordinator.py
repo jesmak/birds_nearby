@@ -41,10 +41,10 @@ from .sightings import BACK, FIRST_IN_REGION, FIRST_OF_YEAR, NOTABLE, Event, Mem
 
 _LOGGER = logging.getLogger(__name__)
 
-STORAGE_VERSION = 1
+STORAGE_VERSION = 2
 
-# Species codes asked for at once. A memory from before scientific names were kept has a year's species, a couple of
-# hundred at most, and a longer address is more than a call should carry.
+# Species codes asked for at once. A memory from before the taxonomy was kept has a year's species, a few hundred in a
+# busy area, and a longer address is more than a call should carry.
 NAMES_PER_CALL = 200
 
 # How long the events wait for their species' pictures.
@@ -62,8 +62,18 @@ EVENT_TYPES = {
 }
 
 
-def memory_store(hass: HomeAssistant, entry_id: str) -> Store[dict[str, Any]]:
-    return Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry_id}")
+class MemoryStore(Store[dict[str, Any]]):
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        super().__init__(hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}")
+        # Kept in UTC: the day of installation is Home Assistant's.
+        self._installed = dt_util.as_local(entry.created_at).date()
+
+    async def _async_migrate_func(self, old_major_version: int, old_minor_version: int, old_data: dict[str, Any]) -> dict[str, Any]:
+        if old_major_version < 2:
+            memory = Memory.from_dict(old_data["memory"])
+            memory.forget_backfill(self._installed)
+            old_data = {**old_data, "memory": memory.as_dict()}
+        return old_data
 
 
 type BirdsConfigEntry = ConfigEntry[BirdsCoordinator]
@@ -96,7 +106,7 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
         self.back_days: int = int(entry.options.get(CONF_BACK_DAYS, DEFAULT_BACK_DAYS))
         self.language = hass.config.language.split("-")[0]
         self._client = EbirdClient(hass, entry.data[CONF_API_KEY])
-        self._store = memory_store(hass, entry.entry_id)
+        self._store = MemoryStore(hass, entry)
         self.memory = Memory.new(dt_util.now().date())
         # Species code: what Wikimedia knows of it. Only species with a picture are stored: the others
         # are looked up again after a restart, so a fixed lookup or a new picture on Wikipedia gets its chance.
@@ -124,7 +134,7 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
         today = now.date()
         locale = ebird_locale(self.hass.config.language)
         try:
-            await self._extra_call(today)
+            await self._extra_call(today, locale)
             recent = await self._client.recent(self.latitude, self.longitude, self.radius_km, locale)
             notable = await self._client.notable(self.latitude, self.longitude, self.radius_km, locale)
         except EbirdAuthError as err:
@@ -164,28 +174,28 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
         self._find_species([*sightings.notable, *sightings.recent])
         return sightings
 
-    async def _extra_call(self, today: date) -> None:
+    async def _extra_call(self, today: date, locale: str) -> None:
         """The one call to eBird a day besides the polls, failed or not: a call on every update would be more than its fair share.
 
-        While species in the memory have no scientific name, such as after an upgrade, the call asks for those, so a
-        new code eBird gives them can be followed. Otherwise it fetches the region's species list.
+        While codes in the memory haven't been looked up in eBird's taxonomy, such as a species new to the area, the call
+        asks for those, so a subspecies group counts as its species and a new code eBird gives a species can be
+        followed. Otherwise it fetches the region's species list.
         """
         self._check_region()
         if self.memory.extra_call_tried == today.isoformat():
             return
-        unnamed = self.memory.unnamed()[:NAMES_PER_CALL]
+        unknown = self.memory.unknown()[:NAMES_PER_CALL]
         yesterday = (today - timedelta(days=1)).isoformat()
-        if unnamed and self.memory.names_asked != yesterday:
+        if unknown and self.memory.names_asked != yesterday:
             self.memory.extra_call_tried = self.memory.names_asked = today.isoformat()
             try:
-                names = await self._client.scientific_names(unnamed)
+                taxa = await self._client.taxonomy(unknown, locale)
             except EbirdAuthError:
                 raise
             except EbirdError as err:
-                _LOGGER.warning("Couldn't read the scientific names of %s species, trying again in two days: %s", len(unnamed), err)
+                _LOGGER.warning("Couldn't look up %s species in eBird's taxonomy, trying again in two days: %s", len(unknown), err)
                 return
-            # A code eBird no longer knows gets an empty name, so it isn't asked for again.
-            self.memory.scientific.update({code: names.get(code, "") for code in unnamed})
+            self.memory.learn(unknown, taxa)
             return
         await self._refresh_region(today)
 
@@ -251,9 +261,10 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
             data["first_in_region"] = event.first_in_region
             data["days_since_notable"] = event.days_since_notable
         if event.kind == FIRST_OF_YEAR:
-            last_year = self.memory.last_year_first_seen(observation.species)
+            species = event.listed_as or observation.species
+            last_year = self.memory.last_year_first_seen(species)
             data["last_year"] = last_year.isoformat() if last_year else None
-            data["days_vs_last_year"] = self.memory.days_vs_last_year(observation.species, observation.observed.date())
+            data["days_vs_last_year"] = self.memory.days_vs_last_year(species, observation.observed.date())
         if event.kind == FIRST_IN_REGION:
             data["region"] = self.memory.region
         return data
