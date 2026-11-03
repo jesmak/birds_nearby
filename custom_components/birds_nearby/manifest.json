@@ -1,6 +1,7 @@
 {
   "domain": "birds_nearby",
   "name": "Birds Nearby",
+  "categories": ["local_services"],
   "codeowners": [
     "@jesmak"
   ],
