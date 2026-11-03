@@ -357,6 +357,37 @@ async def test_an_event_carries_its_species_picture(
     assert events[0].data["iucn_status"] == "LC"
 
 
+async def test_the_year_list_has_the_pictures_of_species_no_longer_sighted(
+    enable_custom_integrations,
+    hass: HomeAssistant,
+    ebird: AiohttpClientMocker,
+    freezer: FrozenDateTimeFactory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    looked_up = []
+
+    async def found(session, species, scientific):
+        looked_up.append((species, scientific))
+        return SpeciesInfo(Picture(f"https://upload.wikimedia.org/{species}.jpg", "", "A. Author", "CC BY 4.0"), None)
+
+    entry = await set_up(hass)
+    coordinator = entry.runtime_data
+    monkeypatch.setattr("custom_components.birds_nearby.coordinator.find_species", found)
+    coordinator.memory.year_list["oldcod1"] = "2026-03-01"
+    coordinator.memory.scientific["oldcod1"] = "Avis antiqua"
+    ebird.clear_requests()
+    answer(ebird)
+    freezer.tick(3600)
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+
+    assert ("oldcod1", "Avis antiqua") in looked_up
+    species = hass.states.get("sensor.birds_nearby_year_list").attributes["species"]
+    old = next(item for item in species if item["species_code"] == "oldcod1")
+    assert old["picture"] == "https://upload.wikimedia.org/oldcod1.jpg"
+    assert old["picture_credit"].endswith("CC BY 4.0")
+
+
 async def test_the_taxonomy_is_asked_every_other_day_at_most(
     enable_custom_integrations, hass: HomeAssistant, aioclient_mock: AiohttpClientMocker, freezer: FrozenDateTimeFactory
 ) -> None:

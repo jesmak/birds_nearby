@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { areaDevices, areaSensors, formatClock, formatDay, localToday, picturesOf, placeOf, threatened, yearDays } from "../src/sightings";
-import { AREA, NOTABLE, RECENT, SENSOR_IDS, YEAR, hass, sighting } from "./fixtures";
+import { areaDevices, areaSensors, formatClock, formatDay, localToday, placeOf, threatened, yearDays } from "../src/sightings";
+import { AREA, SENSOR_IDS, YEAR, hass, sighting } from "./fixtures";
 
 const FI = { language: "fi" };
 
@@ -84,12 +84,6 @@ describe("the year list", () => {
         const days = yearDays(YEAR);
         expect(days.map((day) => day.day)).toEqual(["2026-10-29", "2026-10-20", null]);
         expect(days[0].species.map((item) => item.species_code)).toEqual(["palhar1", "hoocro1"]);
-    });
-
-    it("takes its pictures from the sightings, as its own sensor has none", () => {
-        const pictures = picturesOf(RECENT, NOTABLE);
-        expect(pictures.get("palhar1")?.picture).toBe("https://upload.wikimedia.org/palhar1.jpg");
-        expect(pictures.has("comeid")).toBe(false);
     });
 });
 

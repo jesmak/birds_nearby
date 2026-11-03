@@ -129,22 +129,28 @@ class YearListSensor(BirdsSensor):
         return {
             "year": memory.year,
             "since": date.fromisoformat(memory.year_started),
-            "species": [
-                {
-                    "species_code": code,
-                    "name": memory.names.get(code, code),
-                    # None for a species seen before the installation.
-                    "first_seen": date.fromisoformat(first) if first else None,
-                    "last_year": memory.last_year_first_seen(code),
-                }
-                for code, first in newest_first
-            ],
+            "species": [self._species(code, first) for code, first in newest_first],
             "last_year_since": date.fromisoformat(last_year["since"]) if last_year else None,
             "expected": [
                 {"species_code": code, "name": memory.names.get(code, code), "last_year": first}
                 for code, first in memory.expected(dt_util.now().date())
             ],
         }
+
+    def _species(self, code: str, first: str) -> dict[str, Any]:
+        memory = self.coordinator.memory
+        item: dict[str, Any] = {
+            "species_code": code,
+            "name": memory.names.get(code, code),
+            # None for a species seen before the installation.
+            "first_seen": date.fromisoformat(first) if first else None,
+            "last_year": memory.last_year_first_seen(code),
+        }
+        info = self.coordinator.species.get(code)
+        if info and info.picture:
+            item["picture"] = info.picture.url
+            item["picture_credit"] = info.picture.credit
+        return item
 
 
 class MapFeedSensor(BirdsSensor):

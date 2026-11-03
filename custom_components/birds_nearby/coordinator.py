@@ -171,7 +171,11 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
             since=since,
             updated=dt_util.now(),
         )
-        self._find_species([*sightings.notable, *sightings.recent])
+        # The sightings first, then the year list's species, which a list shows long after their sightings are gone.
+        wanted = {observation.species: observation.scientific for observation in [*sightings.notable, *sightings.recent]}
+        for code in self.memory.year_list:
+            wanted.setdefault(code, self.memory.scientific.get(code, ""))
+        self._find_species(wanted)
         return sightings
 
     async def _extra_call(self, today: date, locale: str) -> None:
@@ -269,9 +273,9 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
             data["region"] = self.memory.region
         return data
 
-    def _find_species(self, observations: list[Observation]) -> None:
-        """Looks up the species not yet looked up, in the background, one at a time."""
-        wanted = {observation.species: observation.scientific for observation in observations if observation.species not in self.species}
+    def _find_species(self, species: dict[str, str]) -> None:
+        """Looks up the species not yet looked up, by code with their scientific names, in the background, one at a time."""
+        wanted = {code: scientific for code, scientific in species.items() if code not in self.species}
         if wanted and not self._looking_up:
             self._looking_up = True
             self.config_entry.async_create_background_task(self.hass, self._look_up_species(wanted), f"{DOMAIN} species")

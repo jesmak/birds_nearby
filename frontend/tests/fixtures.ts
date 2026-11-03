@@ -75,7 +75,14 @@ export const RECENT: Sighting[] = [
 
 export const YEAR: YearSpecies[] = [
     { species_code: "palhar1", name: "arosuohaukka", first_seen: "2026-10-29", last_year: null },
-    { species_code: "comeid", name: "haahka", first_seen: "2026-10-20", last_year: "2025-04-12" },
+    {
+        species_code: "comeid",
+        name: "haahka",
+        first_seen: "2026-10-20",
+        last_year: "2025-04-12",
+        picture: "https://upload.wikimedia.org/comeid.jpg",
+        picture_credit: "A. Author, CC BY 4.0",
+    },
     { species_code: "eurbla", name: "mustarastas", first_seen: null, last_year: null },
     { species_code: "hoocro1", name: "varis", first_seen: "2026-10-29", last_year: null },
 ];

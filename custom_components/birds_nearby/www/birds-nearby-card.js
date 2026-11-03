@@ -1001,15 +1001,6 @@ function countOf(hass, entityId) {
 function threatened(sighting) {
   return !!sighting.iucn_status && THREATENED.includes(sighting.iucn_status);
 }
-function picturesOf(...lists) {
-  const found = /* @__PURE__ */ new Map();
-  for (const sighting of lists.flatMap((list) => list ?? [])) {
-    if (sighting.picture && !found.has(sighting.species_code)) {
-      found.set(sighting.species_code, sighting);
-    }
-  }
-  return found;
-}
 function yearDays(species) {
   const days = /* @__PURE__ */ new Map();
   for (const item of species) {
@@ -1229,7 +1220,7 @@ var BirdsNearbyCard = class extends i4 {
       if (!species) {
         return this.empty(this.text("common.unavailable"));
       }
-      return species.length ? this.yearList(species, picturesOf(recent, notable)) : this.empty(this.text("empty.year_list"));
+      return species.length ? this.yearList(species) : this.empty(this.text("empty.year_list"));
     }
     const sightings = tab === "notable" ? notable : recent;
     if (!sightings) {
@@ -1318,7 +1309,7 @@ var BirdsNearbyCard = class extends i4 {
             </div>
         `;
   }
-  yearList(species, pictures) {
+  yearList(species) {
     const language = this.language();
     const today = localToday();
     return b2`${yearDays(species).map((day) => {
@@ -1336,7 +1327,7 @@ var BirdsNearbyCard = class extends i4 {
         const lastYear = item.last_year ? this.text("year.last_year").replace("{date}", formatDay(item.last_year, language, today)) : "";
         return b2`
                         <div class="row year">
-                            ${this.thumbnail(pictures.get(item.species_code)?.picture)}
+                            ${this.thumbnail(item.picture)}
                             <span class="main">
                                 <span class="name" title=${item.name}>${item.name}</span>
                                 ${lastYear ? b2`<span class="place" title=${lastYear}>${lastYear}</span>` : A}

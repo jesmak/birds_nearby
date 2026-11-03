@@ -24,7 +24,6 @@ import {
     formatNumber,
     listOf,
     localToday,
-    picturesOf,
     placeOf,
     threatened,
     yearDays,
@@ -264,7 +263,7 @@ export class BirdsNearbyCard extends LitElement {
             if (!species) {
                 return this.empty(this.text("common.unavailable"));
             }
-            return species.length ? this.yearList(species, picturesOf(recent, notable)) : this.empty(this.text("empty.year_list"));
+            return species.length ? this.yearList(species) : this.empty(this.text("empty.year_list"));
         }
         const sightings = tab === "notable" ? notable : recent;
         if (!sightings) {
@@ -371,7 +370,7 @@ export class BirdsNearbyCard extends LitElement {
         `;
     }
 
-    private yearList(species: YearSpecies[], pictures: Map<string, Sighting>): TemplateResult {
+    private yearList(species: YearSpecies[]): TemplateResult {
         const language = this.language();
         const today = localToday();
         return html`${yearDays(species).map((day) => {
@@ -391,7 +390,7 @@ export class BirdsNearbyCard extends LitElement {
                         : "";
                     return html`
                         <div class="row year">
-                            ${this.thumbnail(pictures.get(item.species_code)?.picture)}
+                            ${this.thumbnail(item.picture)}
                             <span class="main">
                                 <span class="name" title=${item.name}>${item.name}</span>
                                 ${lastYear ? html`<span class="place" title=${lastYear}>${lastYear}</span>` : nothing}

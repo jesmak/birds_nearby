@@ -44,17 +44,6 @@ export function threatened(sighting: Sighting): boolean {
     return !!sighting.iucn_status && THREATENED.includes(sighting.iucn_status);
 }
 
-/** The species' pictures from the sightings, for the year list, whose sensor has none. */
-export function picturesOf(...lists: (Sighting[] | undefined)[]): Map<string, Sighting> {
-    const found = new Map<string, Sighting>();
-    for (const sighting of lists.flatMap((list) => list ?? [])) {
-        if (sighting.picture && !found.has(sighting.species_code)) {
-            found.set(sighting.species_code, sighting);
-        }
-    }
-    return found;
-}
-
 /** A day of the year list: the species first seen that day, or with `day` null, those seen before the installation. */
 export interface YearDay {
     day: string | null;

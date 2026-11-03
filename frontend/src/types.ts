@@ -37,4 +37,6 @@ export interface YearSpecies {
     name: string;
     first_seen: string | null;
     last_year: string | null;
+    picture?: string;
+    picture_credit?: string;
 }

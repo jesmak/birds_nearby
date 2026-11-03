@@ -126,14 +126,16 @@ describe("birds-nearby-card", () => {
         expect(element.shadowRoot!.querySelector(".detail")).toBeNull();
     });
 
-    it("groups the year list by day, those from before installation last, with pictures from the sightings", async () => {
+    it("groups the year list by day, those from before installation last, with its own pictures", async () => {
         const element = await card(hass());
         await click(element, ".tab.year_list");
         const root = element.shadowRoot!;
         expect([...root.querySelectorAll(".day")].map(text)).toEqual(["29.10. 2 lajia", "20.10. 1 laji", "Ennen asennusta 1 laji"]);
         expect(rows(element)).toEqual(["arosuohaukka", "varis", "haahka", "mustarastas"]);
         expect(text(root.querySelectorAll(".row")[2].querySelector(".place"))).toBe("Viime vuonna 12.4.2025");
-        expect(root.querySelectorAll(".row")[0].querySelector("img")?.getAttribute("src")).toBe("https://upload.wikimedia.org/palhar1.jpg");
+        expect(root.querySelectorAll(".row")[2].querySelector("img")?.getAttribute("src")).toBe("https://upload.wikimedia.org/comeid.jpg");
+        // Not one borrowed from a sighting, which has one for palhar1.
+        expect(root.querySelectorAll(".row")[0].querySelector("img")).toBeNull();
         expect(root.querySelector(".row.year button, button.row.year")).toBeNull();
     });
 
