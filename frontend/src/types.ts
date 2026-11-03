@@ -35,6 +35,8 @@ export interface Sighting {
 export interface YearSpecies {
     species_code: string;
     name: string;
+    /** Empty until eBird's taxonomy has been asked for a code not yet seen in a sighting. */
+    scientific_name: string;
     first_seen: string | null;
     last_year: string | null;
     picture?: string;

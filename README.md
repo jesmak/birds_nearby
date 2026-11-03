@@ -147,9 +147,10 @@ and `picture_credit` once its picture has been found. `bearing` and `direction` 
 A notable sighting also has `reports`, how many checklists reported the species as notable in the last 30 days,
 `valid` (false when eBird's reviewers rejected it) and `reviewed`.
 
-The year list's `species` has each species' `first_seen` this year and `last_year`, the day it was first seen last
-year, newest first. `first_seen` is empty for a species already seen when the integration was set up, and those come
-last. `last_year_since` is the day last year's list started, which is later than 1 January in the year the
+The year list's `species` has each species' `scientific_name`, `first_seen` this year and `last_year`, the day it was
+first seen last year, newest first, and its `picture` and `picture_credit` like a sighting's. `first_seen` is empty for a
+species already seen when the integration was set up, and those come last. `scientific_name` is empty until eBird's
+taxonomy has been asked for a species not yet seen in a sighting. `last_year_since` is the day last year's list started, which is later than 1 January in the year the
 integration was set up. `expected` lists the species seen by this date last year but not yet this year, each with
 its `last_year` date, the earliest first.
 

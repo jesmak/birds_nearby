@@ -639,6 +639,7 @@ var en_default = {
   },
   year: {
     before_installation: "Before installation",
+    first: "first seen",
     last_year: "Last year {date}",
     species_one: "{count} species",
     species_other: "{count} species"
@@ -689,6 +690,7 @@ var fi_default = {
   },
   year: {
     before_installation: "Ennen asennusta",
+    first: "ensimm\xE4inen",
     last_year: "Viime vuonna {date}",
     species_one: "{count} laji",
     species_other: "{count} lajia"
@@ -1001,13 +1003,11 @@ function countOf(hass, entityId) {
 function threatened(sighting) {
   return !!sighting.iucn_status && THREATENED.includes(sighting.iucn_status);
 }
-function yearDays(species) {
-  const days = /* @__PURE__ */ new Map();
-  for (const item of species) {
-    const day = item.first_seen || null;
-    days.set(day, [...days.get(day) ?? [], item]);
-  }
-  return [...days.entries()].map(([day, items]) => ({ day, species: items })).sort((a3, b3) => a3.day === null ? 1 : b3.day === null ? -1 : b3.day.localeCompare(a3.day));
+function yearSpecies(species) {
+  return {
+    dated: species.filter((item) => item.first_seen).sort((a3, b3) => b3.first_seen.localeCompare(a3.first_seen)),
+    before: species.filter((item) => !item.first_seen)
+  };
 }
 function numberLocale(format) {
   switch (format.number_format) {
@@ -1067,7 +1067,7 @@ var PADDING = 24;
 var STEP = 32;
 var TABS_SIDES = 2 * 16 + 2 * 8;
 var TAB_PADDING = 2 * 4;
-var ROW_SIDES = 2 * 16 + 48 + 2 * 12;
+var ROW_SIDES = 2 * 8 + 48 + 2 * 12;
 var SLACK_PX = 0.01;
 function tabsFit(width, needs) {
   const room = (width - TABS_SIDES) / 3 - TAB_PADDING;
@@ -1291,6 +1291,7 @@ var BirdsNearbyCard = class extends i4 {
     const language = this.language();
     return [formatDay(observed, language, localToday()), formatClock(observed, language)].filter(Boolean).join(" ");
   }
+  /** A species' picture at full width with its credit, and its page on eBird, for a sighting or a species of the year list. */
   detail(sighting) {
     const reports = sighting.reports;
     return b2`
@@ -1309,34 +1310,49 @@ var BirdsNearbyCard = class extends i4 {
             </div>
         `;
   }
+  /** The species as the sightings are, the day each was first seen beside it, and those seen before installation apart. */
   yearList(species) {
+    const { dated, before } = yearSpecies(species);
+    const count = this.text(before.length === 1 ? "year.species_one" : "year.species_other").replace(
+      "{count}",
+      formatNumber(before.length, this.numberFormat())
+    );
+    const heading = `${this.text("year.before_installation")} \xB7 ${count}`;
+    return b2`
+            ${dated.map((item) => this.yearRow(item))}
+            ${before.length ? b2`<div class="before" title=${heading}>${heading}</div>` : A}
+            ${before.map((item) => this.yearRow(item))}
+        `;
+  }
+  yearRow(item) {
     const language = this.language();
     const today = localToday();
-    return b2`${yearDays(species).map((day) => {
-      const date = day.day ? formatDay(day.day, language, today) : this.text("year.before_installation");
-      const count = this.text(day.species.length === 1 ? "year.species_one" : "year.species_other").replace(
-        "{count}",
-        formatNumber(day.species.length, this.numberFormat())
-      );
-      return b2`
-                <div class="day">
-                    <span class="day-date" title=${date}>${date}</span>
-                    <span class="day-count" title=${count}>${count}</span>
-                </div>
-                ${day.species.map((item) => {
-        const lastYear = item.last_year ? this.text("year.last_year").replace("{date}", formatDay(item.last_year, language, today)) : "";
-        return b2`
-                        <div class="row year">
-                            ${this.thumbnail(item.picture)}
-                            <span class="main">
-                                <span class="name" title=${item.name}>${item.name}</span>
-                                ${lastYear ? b2`<span class="place" title=${lastYear}>${lastYear}</span>` : A}
-                            </span>
-                        </div>
-                    `;
-      })}
-            `;
-    })}`;
+    const key = `year_list:${item.species_code}`;
+    const lastYear = item.last_year ? this.text("year.last_year").replace("{date}", formatDay(item.last_year, language, today)) : "";
+    const first = item.first_seen ? formatDay(item.first_seen, language, today) : "";
+    const opened = this.open === key;
+    return b2`
+            <div class="sighting ${opened ? "opened" : ""}">
+                <button
+                    class="row year ${this.splitRows.has(key) ? "split" : ""}"
+                    data-key=${key}
+                    aria-expanded=${opened ? "true" : "false"}
+                    @click=${() => this.open = opened ? void 0 : key}
+                >
+                    ${this.thumbnail(item.picture)}
+                    <span class="main">
+                        <span class="name" title=${item.name}>${item.name}</span>
+                        ${item.scientific_name ? b2`<span class="scientific" title=${item.scientific_name}>${item.scientific_name}</span>` : A}
+                        ${lastYear ? b2`<span class="place" title=${lastYear}>${lastYear}</span>` : A}
+                    </span>
+                    ${first ? b2`<span class="side">
+                                  <span class="amount" title=${first}>${first}</span>
+                                  <span class="when" title=${this.text("year.first")}>${this.text("year.first")}</span>
+                              </span>` : A}
+                </button>
+                ${opened ? this.detail({ ...item, url: `https://ebird.org/species/${item.species_code}` }) : A}
+            </div>
+        `;
   }
   areaName() {
     const device = this.hass?.devices?.[this.config?.device ?? ""];
@@ -1389,7 +1405,7 @@ var BirdsNearbyCard = class extends i4 {
         this.tabsSplit = split2;
       }
     }
-    const rows = [...card.querySelectorAll("button.row")];
+    const rows = [...card.querySelectorAll(".row[data-key]")];
     const heights = rows.map((row) => getComputedStyle(row).height);
     rows.forEach((row, index) => row.style.height = heights[index]);
     card.classList.add("measuring");
@@ -1480,14 +1496,21 @@ var BirdsNearbyCard = class extends i4 {
                     flex: none;
                 }
 
+                /* The list is inset from the card's edges, its rows rounded, so a scrollbar has a margin of its own. */
+                .scroll {
+                    margin: 0 8px;
+                }
+
                 /* Held, the list keeps the scrollbar's room whether it scrolls or not, as room that came with the scrolling
-                would put a sighting's count and time under its texts, and keep the card scrolling. */
+                would put a sighting's count and time under its texts, and keep the card scrolling. The same room on the
+                left keeps the rows in the middle, and the scrollbar is 4 px from the card's edge. */
                 ha-card.held > .scroll {
                     flex: 1 1 auto;
                     min-height: 0;
+                    margin: 0 4px;
                     overflow-y: auto;
                     scrollbar-width: thin;
-                    scrollbar-gutter: stable;
+                    scrollbar-gutter: stable both-edges;
                 }
 
                 /* Each line half a row, and the room a whole row leaves over above it. */
@@ -1627,7 +1650,12 @@ var BirdsNearbyCard = class extends i4 {
                     line-height: 24px;
                 }
 
-                /* A line between the rows that takes no room of its own, so each row stays on the step. */
+                /* A line between the rows that takes no room of its own, so each row stays on the step, inset to the texts. */
+                .row,
+                .detail {
+                    background: linear-gradient(var(--divider-color), var(--divider-color)) center bottom / calc(100% - 16px) 1px no-repeat;
+                }
+
                 .row {
                     box-sizing: border-box;
                     display: grid;
@@ -1636,16 +1664,16 @@ var BirdsNearbyCard = class extends i4 {
                     gap: 0 12px;
                     width: 100%;
                     min-height: 64px;
-                    padding: 6px 16px;
-                    box-shadow: inset 0 -1px 0 var(--divider-color);
+                    padding: 6px 8px;
+                    border-radius: 8px;
                 }
 
                 button.row:hover {
-                    background: rgba(var(--rgb-primary-color, 3, 169, 244), 0.08);
+                    background-color: rgba(var(--rgb-primary-color, 3, 169, 244), 0.08);
                 }
 
                 .opened > .row {
-                    box-shadow: none;
+                    background-image: none;
                 }
 
                 .thumbnail {
@@ -1744,24 +1772,28 @@ var BirdsNearbyCard = class extends i4 {
                 /* Held to a height, a sighting's texts keep to one line, cut short with their whole text as a tooltip. */
                 ha-card.held .row .main > *,
                 ha-card.held .row .side > *,
-                ha-card.held .day > * {
+                ha-card.held .before {
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
                 }
 
                 /* While measuring, each text is laid out on one line, whole, as it would be with room enough. */
-                ha-card.measuring button.row .main > *,
-                ha-card.measuring button.row .side > * {
+                ha-card.measuring .row .main > *,
+                ha-card.measuring .row .side > * {
                     white-space: nowrap;
                 }
 
                 /* At the top of the name's line, 16 px in its 20, so a badge never makes the line, and the row, taller. */
+                /* The capitals centred in the badge, their baseline on a whole pixel, 12 px down its 16. */
                 .badge {
                     display: inline-block;
+                    box-sizing: border-box;
+                    height: 16px;
                     margin-top: 2px;
                     margin-left: 2px;
-                    padding: 0 6px;
+                    padding: calc(12px - 1cap) 6px 0;
+                    text-box: trim-both cap alphabetic;
                     border-radius: 8px;
                     font-size: 11px;
                     font-weight: var(--ha-font-weight-normal, 400);
@@ -1774,7 +1806,9 @@ var BirdsNearbyCard = class extends i4 {
                     color: var(--primary-background-color, #fff);
                 }
 
+                /* Its border takes a pixel of the padding, so the baseline stays at 12. */
                 .badge.unreviewed {
+                    padding-top: calc(11px - 1cap);
                     border: 1px solid var(--secondary-text-color);
                     color: var(--secondary-text-color);
                 }
@@ -1785,8 +1819,7 @@ var BirdsNearbyCard = class extends i4 {
                 }
 
                 .detail {
-                    padding: 0 16px 12px;
-                    border-bottom: 1px solid var(--divider-color);
+                    padding: 0 8px 12px;
                 }
 
                 .picture {
@@ -1818,59 +1851,17 @@ var BirdsNearbyCard = class extends i4 {
                     color: var(--primary-color);
                 }
 
-                /* The year list's day and each of its species are half a row, and a line that wraps adds half a row. */
-                .day {
-                    display: flex;
-                    justify-content: space-between;
-                    gap: 12px;
-                    padding: 0 16px;
+                /* Half a row over the species seen before the installation, and a line that wraps adds half a row. */
+                .before {
+                    padding: 0 8px;
                     line-height: 32px;
                     color: var(--secondary-text-color);
                     font-size: var(--ha-font-size-s, 12px);
                     font-weight: var(--ha-font-weight-medium, 500);
                 }
 
-                .day > * {
-                    min-width: 0;
-                }
-
-                .row.year {
-                    grid-template-columns: auto minmax(0, 1fr);
-                    gap: 0 8px;
-                    min-height: 32px;
-                    padding: 0 16px;
-                }
-
-                .row.year .thumbnail {
-                    align-self: start;
-                    margin-top: 4px;
-                    width: 24px;
-                    height: 24px;
-                }
-
-                .row.year .thumbnail ha-icon {
-                    --mdc-icon-size: 18px;
-                }
-
-                /* The name and the date of last year on one line, the date going to a line of its own when it doesn't fit. */
-                .row.year .main {
-                    flex-direction: row;
-                    flex-wrap: wrap;
-                    justify-content: space-between;
-                    column-gap: 12px;
-                }
-
-                .row.year .name,
-                .row.year .place {
-                    line-height: 32px;
-                }
-
-                ha-card.held .row.year .main {
-                    flex-wrap: nowrap;
-                }
-
                 .empty {
-                    padding: 0 16px;
+                    padding: 0 8px;
                     line-height: 32px;
                     color: var(--secondary-text-color);
                 }

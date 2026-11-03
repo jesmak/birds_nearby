@@ -108,13 +108,13 @@ describe("whether the tabs fit side by side", () => {
 });
 
 describe("whether a sighting's count and time fit beside its texts", () => {
-    // 32 px of padding, the 48 px picture and 12 px on either side of the texts.
+    // 16 px of padding, the 48 px picture and 12 px on either side of the texts.
     it.each([
-        ["exactly", 288, 120, 64, true],
-        ["a fraction of a pixel short", 288.4, 120.4, 64, true],
-        ["two hundredths over", 288, 120.02, 64, false],
-        ["over by less than the slack", 288, 120.005, 64, true],
-        ["a pixel over", 288, 121, 64, false],
+        ["exactly", 288, 136, 64, true],
+        ["a fraction of a pixel short", 288.4, 136.4, 64, true],
+        ["two hundredths over", 288, 136.02, 64, false],
+        ["over by less than the slack", 288, 136.005, 64, true],
+        ["a pixel over", 288, 137, 64, false],
         ["a long name on a full section", 483, 300, 70, true],
     ])("%s", (_name, rowWidth, texts, side, fits) => {
         expect(sideFits(rowWidth, texts, side)).toBe(fits);
@@ -150,7 +150,7 @@ describe("the card's splits, as measured", () => {
         textWidths((text) => {
             const row = text.closest("button.row");
             if (text.classList.contains("name")) {
-                return row === first ? 150 : 100;
+                return row === first ? 170 : 100;
             }
             return 40;
         });
@@ -348,8 +348,8 @@ describe("measuring in drawn and layout pixels", () => {
     }
 
     it("splits a row over by a pixel in layout while a dialog scales the card", async () => {
-        // At 0.8, texts of 121 drawn as 96.8 and a side of 64 as 51.2 are a pixel over a row of 288, drawn as 230.4.
-        expect(await splitRows(230.4, 96.8, 51.2, 0.8)).toBeGreaterThan(0);
+        // At 0.8, texts of 137 drawn as 109.6 and a side of 64 as 51.2 are a pixel over a row of 288, drawn as 230.4.
+        expect(await splitRows(230.4, 109.6, 51.2, 0.8)).toBeGreaterThan(0);
     });
 
     it("unscales the tabs' room while a dialog scales the card", async () => {
@@ -398,16 +398,16 @@ describe("measuring in drawn and layout pixels", () => {
     });
 
     it("takes the room from the drawn width, as clientWidth's whole pixels can promise more", async () => {
-        // 104 + 120 + 64 is 288, and a row drawn 287.6 wide, whose clientWidth is 288, is short of it.
-        expect(await splitRows(287.6, 120, 64)).toBeGreaterThan(0);
-        expect(await splitRows(288, 120, 64)).toBe(0);
+        // 88 + 136 + 64 is 288, and a row drawn 287.6 wide, whose clientWidth is 288, is short of it.
+        expect(await splitRows(287.6, 136, 64)).toBeGreaterThan(0);
+        expect(await splitRows(288, 136, 64)).toBe(0);
     });
 
     it("unscales what it measures while a dialog scales the card, so a row that fits isn't split", async () => {
-        // Drawn at 0.8: a row of 288 px is 230.4 drawn, its texts of 120 are 96 and its side of 64 is 51.2. Unscaled,
-        // they fit exactly. Taken as drawn, the 104 px of padding and picture would leave them 25.6 px short.
-        expect(await splitRows(230.4, 96, 51.2, 0.8)).toBe(0);
-        expect(await splitRows(230.4, 96, 51.2)).toBeGreaterThan(0);
+        // Drawn at 0.8: a row of 288 px is 230.4 drawn, its texts of 136 are 108.8 and its side of 64 is 51.2. Unscaled,
+        // they fit exactly. Taken as drawn, the 88 px of padding and picture would leave them 17.6 px short.
+        expect(await splitRows(230.4, 108.8, 51.2, 0.8)).toBe(0);
+        expect(await splitRows(230.4, 108.8, 51.2)).toBeGreaterThan(0);
     });
 });
 

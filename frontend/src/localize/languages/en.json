@@ -33,6 +33,7 @@
     },
     "year": {
         "before_installation": "Before installation",
+        "first": "first seen",
         "last_year": "Last year {date}",
         "species_one": "{count} species",
         "species_other": "{count} species"

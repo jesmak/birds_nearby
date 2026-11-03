@@ -126,17 +126,38 @@ describe("birds-nearby-card", () => {
         expect(element.shadowRoot!.querySelector(".detail")).toBeNull();
     });
 
-    it("groups the year list by day, those from before installation last, with its own pictures", async () => {
+    it("lists the year's species newest first, the day each was first seen beside it, those from before installation last", async () => {
         const element = await card(hass());
         await click(element, ".tab.year_list");
         const root = element.shadowRoot!;
-        expect([...root.querySelectorAll(".day")].map(text)).toEqual(["29.10. 2 lajia", "20.10. 1 laji", "Ennen asennusta 1 laji"]);
         expect(rows(element)).toEqual(["arosuohaukka", "varis", "haahka", "mustarastas"]);
+        expect([...root.querySelectorAll(".row")].map((row) => text(row.querySelector(".side")))).toEqual([
+            "29.10. ensimmäinen",
+            "29.10. ensimmäinen",
+            "20.10. ensimmäinen",
+            "",
+        ]);
+        expect(text(root.querySelector(".before"))).toBe("Ennen asennusta · 1 laji");
+        expect(root.querySelector(".before")?.previousElementSibling?.querySelector(".name")?.textContent).toBe("haahka");
+        expect(text(root.querySelectorAll(".row")[0].querySelector(".scientific"))).toBe("Circus macrourus");
+        // A species whose scientific name isn't known yet has no empty line for it.
+        expect(root.querySelectorAll(".row")[3].querySelector(".scientific")).toBeNull();
         expect(text(root.querySelectorAll(".row")[2].querySelector(".place"))).toBe("Viime vuonna 12.4.2025");
         expect(root.querySelectorAll(".row")[2].querySelector("img")?.getAttribute("src")).toBe("https://upload.wikimedia.org/comeid.jpg");
         // Not one borrowed from a sighting, which has one for palhar1.
         expect(root.querySelectorAll(".row")[0].querySelector("img")).toBeNull();
-        expect(root.querySelector(".row.year button, button.row.year")).toBeNull();
+    });
+
+    it("opens a species of the year list to its picture and its page on eBird", async () => {
+        const element = await card(hass());
+        await click(element, ".tab.year_list");
+        await click(element, "button.row.year", 2);
+        const detail = element.shadowRoot!.querySelector(".detail")!;
+        expect(detail.querySelector(".picture")?.getAttribute("src")).toBe("https://upload.wikimedia.org/comeid.jpg");
+        expect(text(detail.querySelector(".credit"))).toBe("A. Author, CC BY 4.0");
+        expect(detail.querySelector("a")?.getAttribute("href")).toBe("https://ebird.org/species/comeid");
+        await click(element, "button.row.year", 2);
+        expect(element.shadowRoot!.querySelector(".detail")).toBeNull();
     });
 
     it.each([

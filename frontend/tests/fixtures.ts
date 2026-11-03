@@ -74,17 +74,18 @@ export const RECENT: Sighting[] = [
 ];
 
 export const YEAR: YearSpecies[] = [
-    { species_code: "palhar1", name: "arosuohaukka", first_seen: "2026-10-29", last_year: null },
+    { species_code: "palhar1", name: "arosuohaukka", scientific_name: "Circus macrourus", first_seen: "2026-10-29", last_year: null },
     {
         species_code: "comeid",
         name: "haahka",
+        scientific_name: "Somateria mollissima",
         first_seen: "2026-10-20",
         last_year: "2025-04-12",
         picture: "https://upload.wikimedia.org/comeid.jpg",
         picture_credit: "A. Author, CC BY 4.0",
     },
-    { species_code: "eurbla", name: "mustarastas", first_seen: null, last_year: null },
-    { species_code: "hoocro1", name: "varis", first_seen: "2026-10-29", last_year: null },
+    { species_code: "eurbla", name: "mustarastas", scientific_name: "", first_seen: null, last_year: null },
+    { species_code: "hoocro1", name: "varis", scientific_name: "Corvus cornix", first_seen: "2026-10-29", last_year: null },
 ];
 
 function entity(entity_id: string, state: string, attributes: Record<string, unknown> = {}): HassEntity {

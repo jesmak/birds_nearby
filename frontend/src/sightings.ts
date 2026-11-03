@@ -44,22 +44,12 @@ export function threatened(sighting: Sighting): boolean {
     return !!sighting.iucn_status && THREATENED.includes(sighting.iucn_status);
 }
 
-/** A day of the year list: the species first seen that day, or with `day` null, those seen before the installation. */
-export interface YearDay {
-    day: string | null;
-    species: YearSpecies[];
-}
-
-/** The year list by the day each species was first seen, the newest day first and those without a day last. */
-export function yearDays(species: YearSpecies[]): YearDay[] {
-    const days = new Map<string | null, YearSpecies[]>();
-    for (const item of species) {
-        const day = item.first_seen || null;
-        days.set(day, [...(days.get(day) ?? []), item]);
-    }
-    return [...days.entries()]
-        .map(([day, items]) => ({ day, species: items }))
-        .sort((a, b) => (a.day === null ? 1 : b.day === null ? -1 : b.day.localeCompare(a.day)));
+/** The year list's species first seen since the installation, the newest first, and apart those seen before it. */
+export function yearSpecies(species: YearSpecies[]): { dated: YearSpecies[]; before: YearSpecies[] } {
+    return {
+        dated: species.filter((item) => item.first_seen).sort((a, b) => b.first_seen!.localeCompare(a.first_seen!)),
+        before: species.filter((item) => !item.first_seen),
+    };
 }
 
 /** The viewer's language and Home Assistant's number format setting, from the user's profile. */

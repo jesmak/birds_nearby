@@ -120,6 +120,7 @@ async def test_a_rarity_on_the_next_poll(
     assert year_list.attributes["species"][0] == {
         "species_code": "palhar1",
         "name": "Pallid Harrier",
+        "scientific_name": "Circus macrourus",
         "first_seen": NOW.date(),
         "last_year": None,
     }

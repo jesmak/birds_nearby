@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { areaDevices, areaSensors, formatClock, formatDay, localToday, placeOf, threatened, yearDays } from "../src/sightings";
+import { areaDevices, areaSensors, formatClock, formatDay, localToday, placeOf, threatened, yearSpecies } from "../src/sightings";
 import { AREA, SENSOR_IDS, YEAR, hass, sighting } from "./fixtures";
 
 const FI = { language: "fi" };
@@ -80,10 +80,10 @@ describe("dates and times of the observation's own", () => {
 });
 
 describe("the year list", () => {
-    it("is grouped by the day each species was first seen, the newest first and those from before installation last", () => {
-        const days = yearDays(YEAR);
-        expect(days.map((day) => day.day)).toEqual(["2026-10-29", "2026-10-20", null]);
-        expect(days[0].species.map((item) => item.species_code)).toEqual(["palhar1", "hoocro1"]);
+    it("is the newest first, those from before installation apart", () => {
+        const { dated, before } = yearSpecies(YEAR);
+        expect(dated.map((item) => item.species_code)).toEqual(["palhar1", "hoocro1", "comeid"]);
+        expect(before.map((item) => item.species_code)).toEqual(["eurbla"]);
     });
 });
 

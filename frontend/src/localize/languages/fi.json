@@ -33,6 +33,7 @@
     },
     "year": {
         "before_installation": "Ennen asennusta",
+        "first": "ensimmäinen",
         "last_year": "Viime vuonna {date}",
         "species_one": "{count} laji",
         "species_other": "{count} lajia"

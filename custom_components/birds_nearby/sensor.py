@@ -142,6 +142,8 @@ class YearListSensor(BirdsSensor):
         item: dict[str, Any] = {
             "species_code": code,
             "name": memory.names.get(code, code),
+            # Empty until eBird's taxonomy has been asked for a code it hasn't seen in a sighting.
+            "scientific_name": memory.scientific.get(code, ""),
             # None for a species seen before the installation.
             "first_seen": date.fromisoformat(first) if first else None,
             "last_year": memory.last_year_first_seen(code),
