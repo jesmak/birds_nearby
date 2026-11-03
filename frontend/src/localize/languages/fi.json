@@ -5,6 +5,7 @@
         "title": "Lintuhavainnot",
         "invalid_configuration": "Valitse alue Birds Nearby -integraatiosta",
         "invalid_height": "Korkeuden pitää olla positiivinen määrä pikseleitä",
+        "invalid_row_step": "Virheellinen pyöristys. Pyöristyksen (row_step) on oltava full tai half.",
         "no_area": "Aluetta ei löydy. Se on ehkä poistettu tai poistettu käytöstä Birds Nearby -integraatiossa.",
         "not_found": "Anturia ei löydy. Se on ehkä poistettu käytöstä.",
         "unavailable": "eBirdistä ei saada nyt tietoja"
@@ -47,6 +48,10 @@
         "height": "Kiinteä korkeus",
         "height_helper": "Kortti on aina näin korkea, ja lista vierii sen sisällä.",
         "max_height": "Enimmäiskorkeus",
-        "max_height_helper": "Kortti kasvaa sisältönsä mukana tähän korkeuteen asti, ja sen jälkeen lista vierii."
+        "max_height_helper": "Kortti kasvaa sisältönsä mukana tähän korkeuteen asti, ja sen jälkeen lista vierii.",
+        "row_step": "Pyöristys osioihin jaetussa näkymässä",
+        "row_step_helper": "Automaattisella rivikorkeudella kortin korkeus pyöristetään ylöspäin kokonaisiin riveihin, tai tilan säästämiseksi puolikkaisiin riveihin.",
+        "row_step_full": "Kokonaisiin riveihin",
+        "row_step_half": "Puolikkaisiin riveihin"
     }
 }

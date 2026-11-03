@@ -231,14 +231,15 @@ and the log says which line to add, change or remove.
 The card has a visual editor. Add **Birds Nearby** from the card picker and choose the area. The card finds the area's
 sensors through its device, whatever they are called. The options can also be written by hand.
 
-| Name          | Type   | Description                                                                                                                                                                                                                                                  | Default                                                                         |
-| ------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
-| `type`        | string | `custom:birds-nearby-card`                                                                                                                                                                                                                                   | required                                                                        |
-| `device`      | string | The area's device                                                                                                                                                                                                                                            | required                                                                        |
-| `title`       | string | Replaces the title, Birds nearby                                                                                                                                                                                                                             |                                                                                 |
-| `height_mode` | string | How tall the card is. `auto` fits its content, `fixed` keeps it at `height`, `max` lets it grow up to `max_height`. In `fixed` and `max` the list scrolls under the counts. A height in grid rows, set in the layout tab of a sections view, is used instead | `fixed` when `height` is set, `max` when only `max_height` is, otherwise `auto` |
-| `height`      | number | The card's height in pixels, for `fixed`                                                                                                                                                                                                                     |                                                                                 |
-| `max_height`  | number | The card's greatest height in pixels, for `max`. The card picker sets 500, so a busy area's list doesn't take over the dashboard                                                                                                                             |                                                                                 |
+| Name          | Type   | Description                                                                                                                                                                                                                                                                                                       | Default                                                                         |
+| ------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `type`        | string | `custom:birds-nearby-card`                                                                                                                                                                                                                                                                                        | required                                                                        |
+| `device`      | string | The area's device                                                                                                                                                                                                                                                                                                 | required                                                                        |
+| `title`       | string | Replaces the title, Birds nearby                                                                                                                                                                                                                                                                                  |                                                                                 |
+| `height_mode` | string | How tall the card is. `auto` fits its content, `fixed` keeps it at `height`, `max` lets it grow up to `max_height`. In `fixed` and `max` the list scrolls under the counts. A height in grid rows, set in the layout tab of a sections view, is used instead                                                      | `fixed` when `height` is set, `max` when only `max_height` is, otherwise `auto` |
+| `height`      | number | The card's height in pixels, for `fixed`                                                                                                                                                                                                                                                                          |                                                                                 |
+| `max_height`  | number | The card's greatest height in pixels, for `max`. The card picker sets 500, so a busy area's list doesn't take over the dashboard                                                                                                                                                                                  |                                                                                 |
+| `row_step`    | string | How the card rounds its height on automatic rows in a sections view, with `height_mode` `auto`. `full` rounds it up to whole rows, so the cards under it stay on the rows. `half` rounds it up to half rows, which saves space but can leave the cards under it half a row off the rows of the sections beside it | `full`                                                                          |
 
 ### The lists
 
@@ -257,9 +258,14 @@ seen lately has the bird instead.
 
 ### Sizes
 
-The card fills a section by default and can be made as narrow as half of one. On a narrow card the counts are rows of
-their own and a row's count and time go under its place. Held to a height, the title and the counts stay in place and
-the list scrolls, fading out at its edge. The card never gets lower than a row of the list needs, at any width.
+The card fills a section by default and can be made as narrow as three quarters of one. On automatic rows in a sections
+view, it ends on whole rows, or on half rows with `row_step: half`, and any room left over goes under the title. The
+counts become rows of their own whenever a count or its name doesn't fit a third of the card, and a sighting's count and
+time move under its place whenever they don't fit beside its names and place. Held to a height, the title and the counts
+stay in place and the list scrolls, fading out at its edge. The title, the area, the counts' names and each row's texts
+then keep to one line, cut short with the whole text as a tooltip, so the card's height doesn't change with the
+sightings. The card is never held lower than four rows, enough for the title, the counts as rows and one sighting with
+its count and time under it.
 
 ## Examples
 

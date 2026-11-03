@@ -156,7 +156,7 @@ describe("birds-nearby-card", () => {
 
     it("says so when the area isn't there", async () => {
         const element = await card(hass(), { device: "gone0001" });
-        expect(text(element.shadowRoot!.querySelector("ha-card.message"))).toBe(
+        expect(text(element.shadowRoot!.querySelector("ha-card > .message"))).toBe(
             "Aluetta ei löydy. Se on ehkä poistettu tai poistettu käytöstä Birds Nearby -integraatiossa.",
         );
     });
@@ -169,7 +169,8 @@ describe("birds-nearby-card", () => {
         const root = (await card(hass(), { max_height: 100 })).shadowRoot!;
         const haCard = root.querySelector("ha-card")!;
         expect(haCard.classList.contains("held")).toBe(true);
-        expect(haCard.getAttribute("style")).toBe("max-height: 275px");
+        // Four rows: the header, the tabs one to a row and a sighting with its count and time under its texts.
+        expect(haCard.getAttribute("style")).toBe("max-height: 248px");
         expect(root.querySelector("ha-card > .scroll")).not.toBeNull();
     });
 

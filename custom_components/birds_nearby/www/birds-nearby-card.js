@@ -677,6 +677,7 @@ var en_default = {
     title: "Birds nearby",
     invalid_configuration: "Choose an area from the Birds Nearby integration",
     invalid_height: "The height must be a positive number of pixels",
+    invalid_row_step: "Invalid rounding. row_step must be full or half.",
     no_area: "The area isn't found. It may have been removed or disabled in the Birds Nearby integration.",
     not_found: "The sensor isn't found. It may be disabled.",
     unavailable: "No data from eBird right now"
@@ -719,7 +720,11 @@ var en_default = {
     height: "Fixed height",
     height_helper: "The card is always this tall, and the list scrolls inside it.",
     max_height: "Maximum height",
-    max_height_helper: "The card grows with its content up to this height, and then the list scrolls."
+    max_height_helper: "The card grows with its content up to this height, and then the list scrolls.",
+    row_step: "Rounding in a sections view",
+    row_step_helper: "With automatic row height, the card's height is rounded up to whole rows, or to half rows to save space.",
+    row_step_full: "Whole rows",
+    row_step_half: "Half rows"
   }
 };
 
@@ -731,6 +736,7 @@ var fi_default = {
     title: "Lintuhavainnot",
     invalid_configuration: "Valitse alue Birds Nearby -integraatiosta",
     invalid_height: "Korkeuden pit\xE4\xE4 olla positiivinen m\xE4\xE4r\xE4 pikseleit\xE4",
+    invalid_row_step: "Virheellinen py\xF6ristys. Py\xF6ristyksen (row_step) on oltava full tai half.",
     no_area: "Aluetta ei l\xF6ydy. Se on ehk\xE4 poistettu tai poistettu k\xE4yt\xF6st\xE4 Birds Nearby -integraatiossa.",
     not_found: "Anturia ei l\xF6ydy. Se on ehk\xE4 poistettu k\xE4yt\xF6st\xE4.",
     unavailable: "eBirdist\xE4 ei saada nyt tietoja"
@@ -773,7 +779,11 @@ var fi_default = {
     height: "Kiinte\xE4 korkeus",
     height_helper: "Kortti on aina n\xE4in korkea, ja lista vierii sen sis\xE4ll\xE4.",
     max_height: "Enimm\xE4iskorkeus",
-    max_height_helper: "Kortti kasvaa sis\xE4lt\xF6ns\xE4 mukana t\xE4h\xE4n korkeuteen asti, ja sen j\xE4lkeen lista vierii."
+    max_height_helper: "Kortti kasvaa sis\xE4lt\xF6ns\xE4 mukana t\xE4h\xE4n korkeuteen asti, ja sen j\xE4lkeen lista vierii.",
+    row_step: "Py\xF6ristys osioihin jaetussa n\xE4kym\xE4ss\xE4",
+    row_step_helper: "Automaattisella rivikorkeudella kortin korkeus py\xF6ristet\xE4\xE4n yl\xF6sp\xE4in kokonaisiin riveihin, tai tilan s\xE4\xE4st\xE4miseksi puolikkaisiin riveihin.",
+    row_step_full: "Kokonaisiin riveihin",
+    row_step_half: "Puolikkaisiin riveihin"
   }
 };
 
@@ -801,12 +811,48 @@ function browserLanguage() {
   return document.documentElement.lang || navigator.language || "en";
 }
 
+// src/rows.ts
+var ROW_STEPS = ["full", "half"];
+var ROW_PX = 64;
+var ROW_GAP_PX = 8;
+function validRowStep(config) {
+  return config.row_step === void 0 || config.row_step === null || ROW_STEPS.includes(config.row_step);
+}
+function filledHeight(content, config) {
+  const step = config.row_step === "half" ? ROW_PX / 2 : ROW_PX;
+  return Math.max(1, Math.ceil((content + ROW_GAP_PX) / step)) * step - ROW_GAP_PX;
+}
+function rowStepSchema(config, text) {
+  if (heightMode(config) !== "auto") {
+    return [];
+  }
+  return [
+    {
+      name: "row_step",
+      selector: {
+        select: { mode: "dropdown", options: ROW_STEPS.map((value) => ({ value, label: text(`editor.row_step_${value}`) })) }
+      }
+    }
+  ];
+}
+function rowStepData(config) {
+  return { ...config, row_step: config.row_step ?? "full" };
+}
+function tidyRowStep(config) {
+  const tidied = { ...config };
+  if (tidied.row_step !== "half" || heightMode(tidied) !== "auto") {
+    delete tidied.row_step;
+  }
+  return tidied;
+}
+
 // src/editor.ts
 function schema(config, text) {
   return [
     { name: "device", required: true, selector: { device: { filter: { integration: PLATFORM } } } },
     { name: "title", selector: { text: {} } },
-    ...heightSchema(config, text)
+    ...heightSchema(config, text),
+    ...rowStepSchema(config, text)
   ];
 }
 var BirdsNearbyCardEditor = class extends i4 {
@@ -820,7 +866,7 @@ var BirdsNearbyCardEditor = class extends i4 {
     return b2`
             <ha-form
                 .hass=${this.hass}
-                .data=${heightData(this.config)}
+                .data=${rowStepData(heightData(this.config))}
                 .schema=${schema(this.config, (key) => this.text(key))}
                 .computeLabel=${(entry) => this.text(`editor.${entry.name}`)}
                 .computeHelper=${(entry) => this.helper(entry.name)}
@@ -829,7 +875,7 @@ var BirdsNearbyCardEditor = class extends i4 {
         `;
   }
   valueChanged(event) {
-    const config = tidyHeight(event.detail.value);
+    const config = tidyRowStep(tidyHeight(event.detail.value));
     if (!config.title) {
       delete config.title;
     }
@@ -1056,13 +1102,55 @@ function localToday(now = /* @__PURE__ */ new Date()) {
 }
 
 // src/birds-nearby-card.ts
-var HEADER_HEIGHT = 49;
-var TABS_HEIGHT = 117;
-var ROW_HEIGHT2 = 109;
+var PADDING = 24;
+var STEP = 32;
+var TABS_SIDES = 2 * 16 + 2 * 8;
+var TAB_PADDING = 2 * 4;
+var ROW_SIDES = 2 * 16 + 48 + 2 * 12;
+var SLACK_PX = 0.01;
+function tabsFit(width, needs) {
+  const room = (width - TABS_SIDES) / 3 - TAB_PADDING;
+  return needs.every((need) => need <= room + SLACK_PX);
+}
+function sideFits(width, texts, side) {
+  return ROW_SIDES + texts + side <= width + SLACK_PX;
+}
+function textWidth(element) {
+  if (!element) {
+    return 0;
+  }
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  return range.getBoundingClientRect().width;
+}
+function drawnScale(card) {
+  const layout = px(getComputedStyle(card).width);
+  const drawn = card.getBoundingClientRect().width;
+  return layout > 0 && drawn > 0 ? drawn / layout : 1;
+}
+function px(value) {
+  return Number.parseFloat(value) || 0;
+}
 var BirdsNearbyCard = class extends i4 {
   constructor() {
     super();
+    this.tabsSplit = false;
+    this.splitRows = /* @__PURE__ */ new Set();
+    this.filled = 0;
+    this.spare = 0;
+    this.resizes = typeof ResizeObserver === "undefined" ? void 0 : new ResizeObserver(() => this.measureSoon());
     new ScrollFade(this, () => this.heightStyle() ? this.renderRoot.querySelectorAll("ha-card > .scroll") : []);
+  }
+  connectedCallback() {
+    super.connectedCallback();
+    if (this.hasUpdated) {
+      this.requestUpdate();
+    }
+  }
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.resizes?.disconnect();
+    cancelAnimationFrame(this.frame ?? 0);
   }
   static getConfigElement() {
     return document.createElement("birds-nearby-card-editor");
@@ -1078,6 +1166,9 @@ var BirdsNearbyCard = class extends i4 {
     if (!validHeight(config)) {
       throw new Error(translate(browserLanguage(), "common.invalid_height"));
     }
+    if (!validRowStep(config)) {
+      throw new Error(translate(browserLanguage(), "common.invalid_row_step"));
+    }
     if (this.config && this.config.device !== config.device) {
       this.open = void 0;
     }
@@ -1086,9 +1177,12 @@ var BirdsNearbyCard = class extends i4 {
   getCardSize() {
     return heightCardSize(this.config ?? {}, 10, this.minimumHeight());
   }
-  /** In a sections view the card takes a whole section by default and is never narrower than half of one. */
+  /**
+   * In a sections view the card takes a whole section by default and is never narrower than three quarters of one, as
+   * on a phone's half a section a species' name would have room for a syllable or two beside its picture.
+   */
   getGridOptions() {
-    return { columns: 12, min_columns: 6, rows: "auto", min_rows: gridMinRows(this.minimumHeight()) };
+    return { columns: 12, min_columns: 9, rows: "auto", min_rows: gridMinRows(this.minimumHeight()) };
   }
   shouldUpdate(changed) {
     const previous = changed.get("hass");
@@ -1108,24 +1202,34 @@ var BirdsNearbyCard = class extends i4 {
     this.drawnOn = localToday();
     const sensors = areaSensors(this.hass, this.config.device);
     if (!this.hass.devices?.[this.config.device] || !Object.keys(sensors).length) {
-      return b2`<ha-card class="message" style=${this.heightStyle()} lang=${this.textLanguage()}
-                >${this.text("common.no_area")}</ha-card
-            >`;
+      return b2`<ha-card class=${this.heightStyle() ? "held" : ""} style=${this.cardStyle()} lang=${this.textLanguage()}>
+                <div class="message">${this.text("common.no_area")}</div>
+            </ha-card>`;
     }
     const notable = listOf(this.hass, sensors.notable, "sightings");
     const recent = listOf(this.hass, sensors.recent, "species");
     const tab = this.tab ?? ((countOf(this.hass, sensors.notable) ?? 0) > 0 ? "notable" : "recent");
-    const height = this.heightStyle();
+    const title = this.config.title || this.text("common.title");
+    const area = this.areaName();
     return b2`
-            <ha-card class=${height ? "held" : ""} style=${height} lang=${this.textLanguage()}>
+            <ha-card class=${this.heightStyle() ? "held" : ""} style=${this.cardStyle()} lang=${this.textLanguage()}>
                 <div class="header">
-                    <span class="title">${this.config.title || this.text("common.title")}</span>
-                    <span class="area">${this.areaName()}</span>
+                    <span class="title" title=${title}>${title}</span>
+                    <span class="area" title=${area}>${area}</span>
                 </div>
-                <div class="tabs" role="tablist">${SENSORS.map((key) => this.tabButton(this.hass, key, sensors[key], tab))}</div>
+                <div class="tabs ${this.tabsSplit ? "split" : ""}" role="tablist">
+                    ${SENSORS.map((key) => this.tabButton(this.hass, key, sensors[key], tab))}
+                </div>
                 <div class="scroll" role="tabpanel">${this.list(this.hass, tab, sensors, notable, recent)}</div>
             </ha-card>
         `;
+  }
+  updated() {
+    const card = this.renderRoot.querySelector("ha-card");
+    if (card && this.isConnected) {
+      this.resizes?.observe(card);
+      this.measureSoon();
+    }
   }
   tabButton(hass, key, entityId, chosen) {
     const count = countOf(hass, entityId);
@@ -1137,7 +1241,7 @@ var BirdsNearbyCard = class extends i4 {
                 @click=${() => this.choose(key)}
             >
                 <span class="count">${count === null ? "\u2013" : formatNumber(count, this.numberFormat())}</span>
-                <span class="label">${this.text(`tabs.${key}`)}</span>
+                <span class="label" title=${this.text(`tabs.${key}`)}>${this.text(`tabs.${key}`)}</span>
             </button>
         `;
   }
@@ -1174,18 +1278,26 @@ var BirdsNearbyCard = class extends i4 {
   row(tab, sighting, notable) {
     const key = `${tab}:${sighting.species_code}`;
     const opened = this.open === key;
+    const place = placeOf(sighting, this.numberFormat());
+    const amount = this.amount(sighting.count);
+    const when = this.when(sighting.observed);
     return b2`
             <div class="sighting ${opened ? "opened" : ""}">
-                <button class="row" aria-expanded=${opened ? "true" : "false"} @click=${() => this.open = opened ? void 0 : key}>
+                <button
+                    class="row ${this.splitRows.has(key) ? "split" : ""}"
+                    data-key=${key}
+                    aria-expanded=${opened ? "true" : "false"}
+                    @click=${() => this.open = opened ? void 0 : key}
+                >
                     ${this.thumbnail(sighting.picture)}
                     <span class="main">
-                        <span class="name">${sighting.name}${this.badges(sighting, notable)}</span>
-                        <span class="scientific">${sighting.scientific_name}</span>
-                        <span class="place">${placeOf(sighting, this.numberFormat())}</span>
+                        <span class="name" title=${sighting.name}>${sighting.name}${this.badges(sighting, notable)}</span>
+                        <span class="scientific" title=${sighting.scientific_name}>${sighting.scientific_name}</span>
+                        <span class="place" title=${place}>${place}</span>
                     </span>
                     <span class="side">
-                        <span class="amount">${this.amount(sighting.count)}</span>
-                        <span class="when">${this.when(sighting.observed)}</span>
+                        <span class="amount" title=${amount}>${amount}</span>
+                        <span class="when" title=${when}>${when}</span>
                     </span>
                 </button>
                 ${opened ? this.detail(sighting) : A}
@@ -1239,32 +1351,31 @@ var BirdsNearbyCard = class extends i4 {
   yearList(species, pictures) {
     const language = this.language();
     const today = localToday();
-    return b2`${yearDays(species).map(
-      (day) => b2`
-                <div class="day">
-                    <span>${day.day ? formatDay(day.day, language, today) : this.text("year.before_installation")}</span>
-                    <span class="day-count"
-                        >${this.text(day.species.length === 1 ? "year.species_one" : "year.species_other").replace(
+    return b2`${yearDays(species).map((day) => {
+      const date = day.day ? formatDay(day.day, language, today) : this.text("year.before_installation");
+      const count = this.text(day.species.length === 1 ? "year.species_one" : "year.species_other").replace(
         "{count}",
         formatNumber(day.species.length, this.numberFormat())
-      )}</span
-                    >
+      );
+      return b2`
+                <div class="day">
+                    <span class="day-date" title=${date}>${date}</span>
+                    <span class="day-count" title=${count}>${count}</span>
                 </div>
-                ${day.species.map(
-        (item) => b2`
+                ${day.species.map((item) => {
+        const lastYear = item.last_year ? this.text("year.last_year").replace("{date}", formatDay(item.last_year, language, today)) : "";
+        return b2`
                         <div class="row year">
                             ${this.thumbnail(pictures.get(item.species_code)?.picture)}
                             <span class="main">
-                                <span class="name">${item.name}</span>
-                                ${item.last_year ? b2`<span class="place"
-                                              >${this.text("year.last_year").replace("{date}", formatDay(item.last_year, language, today))}</span
-                                          >` : A}
+                                <span class="name" title=${item.name}>${item.name}</span>
+                                ${lastYear ? b2`<span class="place" title=${lastYear}>${lastYear}</span>` : A}
                             </span>
                         </div>
-                    `
-      )}
-            `
-    )}`;
+                    `;
+      })}
+            `;
+    })}`;
   }
   areaName() {
     const device = this.hass?.devices?.[this.config?.device ?? ""];
@@ -1273,9 +1384,106 @@ var BirdsNearbyCard = class extends i4 {
   heightStyle() {
     return heightStyle(this.config ?? {}, this.layout, this.minimumHeight());
   }
-  /** The lowest the card is held to, in pixels: its header, the tabs and one row of the list. */
+  /**
+   * The lowest the card is held to, in pixels: its header, the tabs one to a row and a sighting with its count and time
+   * under its texts, as on the narrowest card either may be split. Four rows.
+   */
   minimumHeight() {
-    return HEADER_HEIGHT + TABS_HEIGHT + ROW_HEIGHT2;
+    return PADDING + STEP + 3 * STEP + 3 * STEP;
+  }
+  /** The card's inline style: the height it is held to, or the rows it fills, with their spare room. */
+  cardStyle() {
+    const held = this.heightStyle();
+    if (held || !this.filled) {
+      return held;
+    }
+    return `min-height: ${this.filled}px; --spare: ${this.spare}px`;
+  }
+  measureSoon() {
+    cancelAnimationFrame(this.frame ?? 0);
+    this.frame = requestAnimationFrame(() => this.measure());
+  }
+  measure() {
+    const card = this.renderRoot.querySelector("ha-card");
+    if (!card || !card.clientWidth) {
+      return;
+    }
+    const scale = drawnScale(card);
+    this.measureSplits(card, scale);
+    this.fillRows(card, scale);
+  }
+  /**
+   * Splits only what doesn't fit: the tabs go one to a row when a count or a label wouldn't fit its third whole, and a
+   * sighting's count and time go under its texts when they wouldn't fit beside them, each text whole on one line.
+   * Wrapped texts are measured on one line, each row held to its drawn height meanwhile, so nothing moves. The room is
+   * each part's drawn width in fractions of a pixel, as clientWidth's whole pixels can promise more room than there is,
+   * and every drawn width is unscaled to compare with the layout's pixels.
+   */
+  measureSplits(card, scale) {
+    const width = (element) => textWidth(element) / scale;
+    const tabs = card.querySelector(".tabs");
+    if (tabs) {
+      const needs = [...tabs.querySelectorAll(".tab")].map(
+        (tab) => Math.max(width(tab.querySelector(".count")), width(tab.querySelector(".label")))
+      );
+      const split2 = !tabsFit(tabs.getBoundingClientRect().width / scale, needs);
+      if (split2 !== this.tabsSplit) {
+        this.tabsSplit = split2;
+      }
+    }
+    const rows = [...card.querySelectorAll("button.row")];
+    const heights = rows.map((row) => getComputedStyle(row).height);
+    rows.forEach((row, index) => row.style.height = heights[index]);
+    card.classList.add("measuring");
+    const split = /* @__PURE__ */ new Set();
+    for (const row of rows) {
+      const texts = Math.max(0, ...[...row.querySelectorAll(".main > *")].map(width));
+      const side = Math.max(0, ...[...row.querySelectorAll(".side > *")].map(width));
+      if (!sideFits(row.getBoundingClientRect().width / scale, texts, side) && row.dataset.key) {
+        split.add(row.dataset.key);
+      }
+    }
+    card.classList.remove("measuring");
+    rows.forEach((row) => row.style.height = "");
+    const drawn = new Set(rows.map((row) => row.dataset.key));
+    const kept = [...this.splitRows].filter((key) => !drawn.has(key));
+    const next = /* @__PURE__ */ new Set([...kept, ...split]);
+    if (next.size !== this.splitRows.size || [...next].some((key) => !this.splitRows.has(key))) {
+      this.splitRows = next;
+    }
+  }
+  /**
+   * In a sections view whose rows are left automatic, the card takes the whole rows its content needs, or the half rows
+   * with `row_step: half`, so the cards under it stay on the rows. The room left over goes under the header, or above
+   * the message when the area isn't found.
+   */
+  fillRows(card, scale) {
+    if (this.layout !== "grid" || this.heightStyle()) {
+      this.filled = 0;
+      this.spare = 0;
+      return;
+    }
+    const parts = card.querySelectorAll(":scope > .header, :scope > .tabs, :scope > .scroll > *, :scope > .message");
+    const last = parts[parts.length - 1];
+    if (!last) {
+      return;
+    }
+    const style = getComputedStyle(card);
+    const drawn = (last.getBoundingClientRect().bottom - card.getBoundingClientRect().top) / scale;
+    let content = drawn + px(style.paddingBottom) + px(style.borderBottomWidth);
+    const header = card.querySelector(":scope > .header");
+    const message = card.querySelector(":scope > .message");
+    if (header) {
+      content -= px(getComputedStyle(header).paddingBottom);
+    } else if (message) {
+      content -= px(getComputedStyle(message).paddingTop);
+    }
+    const filled = filledHeight(Math.ceil(content - SLACK_PX), this.config ?? {});
+    const spare = Math.max(0, Math.floor(filled - content + SLACK_PX));
+    if (filled !== this.filled || spare !== this.spare) {
+      this.filled = filled;
+      this.spare = spare;
+    }
   }
   numberFormat() {
     return { language: this.language(), number_format: this.hass?.locale?.number_format };
@@ -1294,9 +1502,12 @@ var BirdsNearbyCard = class extends i4 {
   static get styles() {
     return [
       i`
+                /* 11 px of padding and the border, top and bottom, make 24 px, so the parts on the 32 px step end on the rows. */
                 ha-card {
                     container-type: inline-size;
+                    box-sizing: border-box;
                     overflow: hidden;
+                    padding: 11px 0;
                     font-variant-numeric: tabular-nums;
                 }
 
@@ -1309,15 +1520,20 @@ var BirdsNearbyCard = class extends i4 {
                     flex: none;
                 }
 
+                /* Held, the list keeps the scrollbar's room whether it scrolls or not, as room that came with the scrolling
+                would put a sighting's count and time under its texts, and keep the card scrolling. */
                 ha-card.held > .scroll {
                     flex: 1 1 auto;
                     min-height: 0;
                     overflow-y: auto;
                     scrollbar-width: thin;
+                    scrollbar-gutter: stable;
                 }
 
-                ha-card.message {
-                    padding: 16px;
+                /* Each line half a row, and the room a whole row leaves over above it. */
+                .message {
+                    padding: var(--spare, 0px) 16px 0;
+                    line-height: 32px;
                     color: var(--secondary-text-color);
                 }
 
@@ -1331,39 +1547,64 @@ var BirdsNearbyCard = class extends i4 {
                     cursor: pointer;
                 }
 
+                /* Each line of the header is half a row, and the room a whole row leaves over goes under it. Padding, not a
+                margin, which would collapse into a neighbour's. */
                 .header {
                     display: flex;
                     flex-wrap: wrap;
-                    align-items: baseline;
+                    align-items: flex-start;
                     justify-content: space-between;
-                    gap: 0 12px;
-                    padding: 12px 16px 4px;
+                    column-gap: 12px;
+                    padding: 0 16px var(--spare, 0px);
+                    line-height: 32px;
                 }
 
                 .title {
+                    min-width: 0;
                     font-size: var(--ha-font-size-l, 18px);
                     overflow-wrap: anywhere;
                 }
 
+                /* On the title's baseline, moved there rather than aligned by it: two sizes on one baseline would make the
+                header a pixel taller than its half row. */
                 .area {
+                    position: relative;
+                    top: 2px;
+                    min-width: 0;
                     color: var(--secondary-text-color);
                     font-size: var(--ha-font-size-s, 12px);
                     overflow-wrap: anywhere;
                 }
 
+                /* Held to a height, the header keeps to one line, its texts cut short with their whole text as a tooltip. */
+                ha-card.held .header {
+                    flex-wrap: nowrap;
+                }
+
+                ha-card.held .title,
+                ha-card.held .area {
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+
+                /* Side by side the tabs are a row: a 56 px tile, 7 px and the line under them. One to a row, each is half a row. */
                 .tabs {
                     display: grid;
                     grid-template-columns: repeat(3, minmax(0, 1fr));
                     gap: 8px;
-                    padding: 8px 16px 12px;
+                    padding: 0 16px 7px;
+                    border-bottom: 1px solid var(--divider-color);
                 }
 
                 .tab {
+                    box-sizing: border-box;
                     display: flex;
                     flex-direction: column;
                     align-items: center;
-                    gap: 2px;
-                    padding: 8px 4px;
+                    justify-content: center;
+                    height: 56px;
+                    padding: 0 4px;
                     border-radius: var(--ha-card-border-radius, 12px);
                     background: rgba(var(--rgb-primary-text-color, 33, 33, 33), 0.06);
                     text-align: center;
@@ -1381,49 +1622,52 @@ var BirdsNearbyCard = class extends i4 {
                     outline-offset: -2px;
                 }
 
+                /* The count is the same size side by side and one to a row, so it measures the same either way. */
                 .tab .count {
-                    font-size: 24px;
-                    line-height: 1.2;
+                    font-size: 22px;
+                    line-height: 28px;
                 }
 
                 .tab.notable .count {
                     color: var(--warning-color, #ffa600);
                 }
 
-                /* A word is hyphenated where the browser can, and broken only when nothing else fits. */
+                /* Whole on one line: the tabs go one to a row before a label is cut, and only a card narrower than its least is. */
                 .tab .label {
+                    max-width: 100%;
                     color: var(--secondary-text-color);
                     font-size: var(--ha-font-size-s, 12px);
-                    hyphens: auto;
-                    overflow-wrap: break-word;
-                    max-width: 100%;
+                    line-height: 16px;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
                 }
 
-                /* Narrower, the tabs are rows of their own, as "Huomionarvoiset" would no longer fit a third of the width. */
-                @container (max-width: 359px) {
-                    .tabs {
-                        grid-template-columns: minmax(0, 1fr);
-                        gap: 4px;
-                    }
-
-                    .tab {
-                        flex-direction: row;
-                        align-items: baseline;
-                        gap: 8px;
-                        padding: 4px 12px;
-                        text-align: left;
-                    }
-
-                    .tab .count {
-                        min-width: 2.5em;
-                        font-size: 18px;
-                    }
+                /* One to a row when a count or a label wouldn't fit its third, as measured: 24 px each and 8 px under it. */
+                .tabs.split {
+                    grid-template-columns: minmax(0, 1fr);
                 }
 
-                .scroll {
-                    border-top: 1px solid var(--divider-color);
+                .tabs.split .tab {
+                    flex-direction: row;
+                    align-items: baseline;
+                    justify-content: flex-start;
+                    gap: 8px;
+                    height: 24px;
+                    padding: 0 12px;
+                    text-align: start;
                 }
 
+                .tabs.split .tab .count {
+                    min-width: 2.5em;
+                    line-height: 24px;
+                }
+
+                .tabs.split .tab .label {
+                    line-height: 24px;
+                }
+
+                /* A line between the rows that takes no room of its own, so each row stays on the step. */
                 .row {
                     box-sizing: border-box;
                     display: grid;
@@ -1431,8 +1675,9 @@ var BirdsNearbyCard = class extends i4 {
                     align-items: center;
                     gap: 0 12px;
                     width: 100%;
-                    padding: 8px 16px;
-                    border-bottom: 1px solid var(--divider-color);
+                    min-height: 64px;
+                    padding: 6px 16px;
+                    box-shadow: inset 0 -1px 0 var(--divider-color);
                 }
 
                 button.row:hover {
@@ -1440,7 +1685,7 @@ var BirdsNearbyCard = class extends i4 {
                 }
 
                 .opened > .row {
-                    border-bottom: none;
+                    box-shadow: none;
                 }
 
                 .thumbnail {
@@ -1465,8 +1710,10 @@ var BirdsNearbyCard = class extends i4 {
                     min-width: 0;
                 }
 
+                /* A sighting's three lines and its padding make a row. */
                 .name {
                     font-weight: var(--ha-font-weight-medium, 500);
+                    line-height: 20px;
                     overflow-wrap: anywhere;
                 }
 
@@ -1478,38 +1725,88 @@ var BirdsNearbyCard = class extends i4 {
                     color: var(--secondary-text-color);
                     font-size: var(--ha-font-size-s, 12px);
                     font-style: italic;
+                    line-height: 16px;
                     overflow-wrap: anywhere;
                 }
 
                 .place {
                     color: var(--secondary-text-color);
                     font-size: var(--ha-font-size-s, 12px);
+                    line-height: 16px;
                     overflow-wrap: anywhere;
                 }
 
+                /* Beside the texts only while it fits whole, as measured, so it never wraps there. */
                 .side {
                     display: flex;
                     flex-direction: column;
                     align-items: flex-end;
-                    max-width: 9em;
-                    text-align: right;
+                    text-align: end;
+                    white-space: nowrap;
                     color: var(--secondary-text-color);
                     font-size: var(--ha-font-size-s, 12px);
+                    line-height: 16px;
                 }
 
                 .amount {
                     color: var(--primary-text-color);
                     font-size: var(--ha-font-size-m, 14px);
+                    line-height: 20px;
                 }
 
+                /* Under the texts when it wouldn't fit beside them, as measured: three half rows, unless a text wraps unheld. */
+                .row.split {
+                    grid-template-columns: auto minmax(0, 1fr);
+                    align-items: start;
+                    min-height: 96px;
+                }
+
+                .row.split .side {
+                    grid-column: 2;
+                    flex-direction: row;
+                    flex-wrap: wrap;
+                    align-items: baseline;
+                    gap: 0 8px;
+                    text-align: start;
+                    white-space: normal;
+                }
+
+                /* Held, the count and time under the texts share one line too, so a split row is always its three half rows. */
+                ha-card.held .row.split .side {
+                    flex-wrap: nowrap;
+                    min-width: 0;
+                }
+
+                ha-card.held .row.split .side > * {
+                    min-width: 0;
+                }
+
+                /* Held to a height, a sighting's texts keep to one line, cut short with their whole text as a tooltip. */
+                ha-card.held .row .main > *,
+                ha-card.held .row .side > *,
+                ha-card.held .day > * {
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+
+                /* While measuring, each text is laid out on one line, whole, as it would be with room enough. */
+                ha-card.measuring button.row .main > *,
+                ha-card.measuring button.row .side > * {
+                    white-space: nowrap;
+                }
+
+                /* At the top of the name's line, 16 px in its 20, so a badge never makes the line, and the row, taller. */
                 .badge {
                     display: inline-block;
+                    margin-top: 2px;
                     margin-left: 2px;
                     padding: 0 6px;
                     border-radius: 8px;
                     font-size: 11px;
                     font-weight: var(--ha-font-weight-normal, 400);
-                    vertical-align: 1px;
+                    line-height: 16px;
+                    vertical-align: top;
                 }
 
                 .badge.notable {
@@ -1561,47 +1858,61 @@ var BirdsNearbyCard = class extends i4 {
                     color: var(--primary-color);
                 }
 
+                /* The year list's day and each of its species are half a row, and a line that wraps adds half a row. */
                 .day {
                     display: flex;
                     justify-content: space-between;
                     gap: 12px;
-                    padding: 10px 16px 4px;
+                    padding: 0 16px;
+                    line-height: 32px;
                     color: var(--secondary-text-color);
                     font-size: var(--ha-font-size-s, 12px);
                     font-weight: var(--ha-font-weight-medium, 500);
                 }
 
+                .day > * {
+                    min-width: 0;
+                }
+
                 .row.year {
-                    padding-top: 6px;
-                    padding-bottom: 6px;
+                    grid-template-columns: auto minmax(0, 1fr);
+                    gap: 0 8px;
+                    min-height: 32px;
+                    padding: 0 16px;
                 }
 
                 .row.year .thumbnail {
-                    width: 36px;
-                    height: 36px;
+                    align-self: start;
+                    margin-top: 4px;
+                    width: 24px;
+                    height: 24px;
+                }
+
+                .row.year .thumbnail ha-icon {
+                    --mdc-icon-size: 18px;
+                }
+
+                /* The name and the date of last year on one line, the date going to a line of its own when it doesn't fit. */
+                .row.year .main {
+                    flex-direction: row;
+                    flex-wrap: wrap;
+                    justify-content: space-between;
+                    column-gap: 12px;
+                }
+
+                .row.year .name,
+                .row.year .place {
+                    line-height: 32px;
+                }
+
+                ha-card.held .row.year .main {
+                    flex-wrap: nowrap;
                 }
 
                 .empty {
-                    padding: 16px;
+                    padding: 0 16px;
+                    line-height: 32px;
                     color: var(--secondary-text-color);
-                }
-
-                /* On a narrow card the count and time go under the place, so the name keeps its room. */
-                @container (max-width: 299px) {
-                    .row {
-                        grid-template-columns: auto minmax(0, 1fr);
-                        align-items: start;
-                    }
-
-                    .side {
-                        grid-column: 2;
-                        flex-direction: row;
-                        flex-wrap: wrap;
-                        gap: 0 8px;
-                        align-items: baseline;
-                        max-width: none;
-                        text-align: left;
-                    }
                 }
             `,
       fadeStyles
@@ -1623,6 +1934,18 @@ __decorateClass([
 __decorateClass([
   r5()
 ], BirdsNearbyCard.prototype, "open", 2);
+__decorateClass([
+  r5()
+], BirdsNearbyCard.prototype, "tabsSplit", 2);
+__decorateClass([
+  r5()
+], BirdsNearbyCard.prototype, "splitRows", 2);
+__decorateClass([
+  r5()
+], BirdsNearbyCard.prototype, "filled", 2);
+__decorateClass([
+  r5()
+], BirdsNearbyCard.prototype, "spare", 2);
 if (!customElements.get("birds-nearby-card")) {
   console.info(
     `%c  BIRDS-NEARBY-CARD 
@@ -1642,5 +1965,7 @@ if (!customElements.get("birds-nearby-card")) {
   customElements.define("birds-nearby-card", BirdsNearbyCard);
 }
 export {
-  BirdsNearbyCard
+  BirdsNearbyCard,
+  sideFits,
+  tabsFit
 };

@@ -5,6 +5,7 @@
         "title": "Birds nearby",
         "invalid_configuration": "Choose an area from the Birds Nearby integration",
         "invalid_height": "The height must be a positive number of pixels",
+        "invalid_row_step": "Invalid rounding. row_step must be full or half.",
         "no_area": "The area isn't found. It may have been removed or disabled in the Birds Nearby integration.",
         "not_found": "The sensor isn't found. It may be disabled.",
         "unavailable": "No data from eBird right now"
@@ -47,6 +48,10 @@
         "height": "Fixed height",
         "height_helper": "The card is always this tall, and the list scrolls inside it.",
         "max_height": "Maximum height",
-        "max_height_helper": "The card grows with its content up to this height, and then the list scrolls."
+        "max_height_helper": "The card grows with its content up to this height, and then the list scrolls.",
+        "row_step": "Rounding in a sections view",
+        "row_step_helper": "With automatic row height, the card's height is rounded up to whole rows, or to half rows to save space.",
+        "row_step_full": "Whole rows",
+        "row_step_half": "Half rows"
     }
 }

@@ -1,4 +1,4 @@
-/** The card's visual editor: the area, the title and the height. */
+/** The card's visual editor: the area, the title, the height and its rounding. */
 import { LitElement, html, nothing } from "lit";
 import type { TemplateResult } from "lit";
 import { property, state } from "lit/decorators.js";
@@ -7,6 +7,7 @@ import { PLATFORM } from "./const";
 import type { HomeAssistant } from "./hass";
 import { heightData, heightSchema, tidyHeight } from "./height";
 import { browserLanguage, translate } from "./localize/localize";
+import { rowStepData, rowStepSchema, tidyRowStep } from "./rows";
 import type { BirdsNearbyCardConfig } from "./types";
 
 interface SchemaEntry {
@@ -18,6 +19,7 @@ function schema(config: BirdsNearbyCardConfig, text: (key: string) => string) {
         { name: "device", required: true, selector: { device: { filter: { integration: PLATFORM } } } },
         { name: "title", selector: { text: {} } },
         ...heightSchema(config, text),
+        ...rowStepSchema(config, text),
     ];
 }
 
@@ -36,7 +38,7 @@ export class BirdsNearbyCardEditor extends LitElement {
         return html`
             <ha-form
                 .hass=${this.hass}
-                .data=${heightData(this.config)}
+                .data=${rowStepData(heightData(this.config))}
                 .schema=${schema(this.config, (key) => this.text(key))}
                 .computeLabel=${(entry: SchemaEntry) => this.text(`editor.${entry.name}`)}
                 .computeHelper=${(entry: SchemaEntry) => this.helper(entry.name)}
@@ -46,7 +48,7 @@ export class BirdsNearbyCardEditor extends LitElement {
     }
 
     private valueChanged(event: CustomEvent<{ value: BirdsNearbyCardConfig }>): void {
-        const config: BirdsNearbyCardConfig = tidyHeight(event.detail.value);
+        const config: BirdsNearbyCardConfig = tidyRowStep(tidyHeight(event.detail.value));
         if (!config.title) {
             delete config.title;
         }

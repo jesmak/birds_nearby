@@ -1,7 +1,7 @@
 import type { LovelaceCardConfig } from "./hass";
-import type { HeightConfig } from "./height";
+import type { RowStepConfig } from "./rows";
 
-export interface BirdsNearbyCardConfig extends LovelaceCardConfig, HeightConfig {
+export interface BirdsNearbyCardConfig extends LovelaceCardConfig, RowStepConfig {
     /** The area's device, from the Birds Nearby integration. */
     device: string;
     /** Replaces the card's title. */
