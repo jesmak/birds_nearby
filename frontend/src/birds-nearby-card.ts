@@ -14,7 +14,7 @@ import { ScrollFade, fadeStyles } from "./fade";
 import type { HomeAssistant } from "./hass";
 import { gridMinRows, heightCardSize, heightStyle, validHeight } from "./height";
 import { LANGUAGE_CODES, browserLanguage, translate } from "./localize/localize";
-import { filledHeight, validRowStep } from "./rows";
+import { fillLimit, filledHeight, filledStyle, validRowStep } from "./rows";
 import {
     areaDevices,
     areaSensors,
@@ -420,13 +420,10 @@ export class BirdsNearbyCard extends LitElement {
         return PADDING + STEP + 3 * STEP + 3 * STEP;
     }
 
-    /** The card's inline style: the height it is held to, or the rows it fills, with their spare room. */
+    /** The card's inline style: the height it is held to, or the rows it fills up to any limit, with their spare room. */
     private cardStyle(): string {
-        const held = this.heightStyle();
-        if (held || !this.filled) {
-            return held;
-        }
-        return `min-height: ${this.filled}px; --spare: ${this.spare}px`;
+        const style = filledStyle(this.config ?? {}, this.layout, this.minimumHeight(), this.filled);
+        return this.filled ? `${style}; --spare: ${this.spare}px` : style;
     }
 
     private measureSoon(): void {
@@ -488,11 +485,13 @@ export class BirdsNearbyCard extends LitElement {
 
     /**
      * In a sections view whose rows are left automatic, the card takes the whole rows its content needs, or the half rows
-     * with `row_step: half`, so the cards under it stay on the rows. The room left over goes under the header, or above
+     * with `row_step: half`, so the cards under it stay on the rows, up to the limit of a card that grows up to one. The
+     * room left over goes under the header, or above
      * the message when the area isn't found.
      */
     private fillRows(card: HTMLElement, scale: number): void {
-        if (this.layout !== "grid" || this.heightStyle()) {
+        const limit = fillLimit(this.config ?? {}, this.layout, this.minimumHeight());
+        if (!limit) {
             this.filled = 0;
             this.spare = 0;
             return;
@@ -518,7 +517,7 @@ export class BirdsNearbyCard extends LitElement {
         }
         // Up to the whole pixel, so a content a fraction over, such as 120.4, still ends inside the rows. The slack keeps
         // noise from unscaling mid-scale (48 drawn at 0.8 unscales to 48.00000000000001) from costing a pixel either way.
-        const filled = filledHeight(Math.ceil(content - SLACK_PX), this.config ?? {});
+        const filled = filledHeight(Math.ceil(content - SLACK_PX), this.config ?? {}, limit);
         const spare = Math.max(0, Math.floor(filled - content + SLACK_PX));
         if (filled !== this.filled || spare !== this.spare) {
             this.filled = filled;

@@ -271,6 +271,14 @@ describe("filling the rows on automatic rows", () => {
             78,
             "min-height: 120px; --spare: 31px",
         ],
+        // The picker's 500 px, rounded down to the rows: 440.
+        ["up to a limit, under it", { max_height: 500 }, 77, "max-height: 440px; min-height: 120px; --spare: 32px"],
+        [
+            "up to a limit, over it, on the limit rounded down to the rows",
+            { max_height: 500 },
+            700,
+            "max-height: 440px; min-height: 440px; --spare: 0px",
+        ],
     ])("%s", async (_name, config, bottom, style) => {
         expect(one(await filled(config, "grid", bottom), "ha-card").getAttribute("style")).toBe(style);
     });
@@ -413,8 +421,10 @@ describe("the editor's rounding", () => {
         return schema.map((entry) => entry.name);
     }
 
-    it("offers the rounding only while the card fits its content", () => {
+    it("offers the rounding unless the card is held to a fixed height, and never the height mode, set in YAML only", () => {
         expect(schemaNames({})).toContain("row_step");
-        expect(schemaNames({ height_mode: "max", max_height: 400 })).not.toContain("row_step");
+        expect(schemaNames({ height_mode: "max", max_height: 400 })).toContain("row_step");
+        expect(schemaNames({ height_mode: "fixed", height: 400 })).not.toContain("row_step");
+        expect(schemaNames({ height: 400 }).filter((name) => name.includes("height"))).toEqual([]);
     });
 });

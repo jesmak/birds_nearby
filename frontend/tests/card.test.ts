@@ -245,7 +245,7 @@ describe("birds-nearby-card", () => {
 });
 
 describe("birds-nearby-card-editor", () => {
-    it("leaves an empty title and a height mode the heights give out of the configuration", () => {
+    it("leaves an empty title out of the configuration, and the height mode set in YAML as it is", () => {
         const editor = new BirdsNearbyCardEditor();
         const changed = vi.fn();
         editor.addEventListener("config-changed", (event) => changed((event as CustomEvent).detail.config));
@@ -254,6 +254,6 @@ describe("birds-nearby-card-editor", () => {
                 detail: { value: { type: "custom:birds-nearby-card", device: AREA, title: "", height_mode: "max", max_height: 500 } },
             }),
         );
-        expect(changed).toHaveBeenCalledWith({ type: "custom:birds-nearby-card", device: AREA, max_height: 500 });
+        expect(changed).toHaveBeenCalledWith({ type: "custom:birds-nearby-card", device: AREA, height_mode: "max", max_height: 500 });
     });
 });
