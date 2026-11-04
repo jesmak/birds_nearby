@@ -405,7 +405,7 @@ def test_a_memory_from_before_scientific_names_loads() -> None:
     assert Memory.from_dict(stored).scientific == {}
 
 
-def test_a_late_checklist_is_not_notable_before_it_was_seen() -> None:
+def test_a_late_notable_checklist_does_not_move_the_newest_date() -> None:
     memory = started(obs())
     rarity = {"species": "palhar1", "name": "Pallid Harrier", "scientific": "Circus macrourus", "reviewed": True}
     remember(memory, [], [obs(checklist="S900110", observed="2026-10-12 08:00", **rarity)], TODAY, 30)

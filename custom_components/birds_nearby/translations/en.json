@@ -44,7 +44,7 @@
           "region": "Region for first records"
         },
         "data_description": {
-          "scan_interval": "At least 15 minutes. Each update makes two requests to eBird.",
+          "scan_interval": "At least 15 minutes. Each update makes two requests to eBird, and one more is made once a day.",
           "recent_days": "How many of the latest days the recent sensor and the map show.",
           "back_days": "A species that hasn't been seen for this many days fires an event when it is seen again.",
           "region": "The eBird county or region whose species list a sighting is compared with, such as US-NY-109 or FI-02. Picked from the nearest hotspot when the area was added. Leave empty to turn first records off."

@@ -257,8 +257,8 @@ reported on, and a link to the species on eBird.
 
 The year list is grouped by the day each species was first seen, the newest day first. The species already seen when
 the integration was set up come last, as a group of their own, since their first day isn't known. A species seen last
-year shows the day it was first seen then. The pictures are those of the recent and notable sightings, so a species not
-seen lately has the bird instead.
+year shows the day it was first seen then. The year list has pictures of its own, so a species not
+seen lately keeps its picture, and only a species with no picture found has the bird instead.
 
 ### Sizes
 

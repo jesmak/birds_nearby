@@ -1,6 +1,5 @@
 """Constants for the Birds Nearby integration."""
 
-from datetime import timedelta
 from typing import Final
 
 DOMAIN: Final = "birds_nearby"
@@ -41,9 +40,6 @@ MAX_BACK_DAYS: Final = 365
 
 # The furthest back eBird's API reaches.
 WINDOW_DAYS: Final = 30
-
-# The region's species list is fetched once a day.
-REGION_REFRESH: Final = timedelta(days=1)
 
 # Coordinates sent to eBird are rounded to this many decimals, about a kilometre.
 REQUEST_DECIMALS: Final = 2

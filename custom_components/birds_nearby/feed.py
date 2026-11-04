@@ -37,6 +37,7 @@ SHOWN_IUCN = ("NT", "VU", "EN", "CR", "EW")
 
 TEXTS: dict[str, dict[str, str]] = {
     "en": {
+        "one_species": "1 species",
         "species": "{count} species",
         "one_bird": "1 bird",
         "birds": "{count} birds",
@@ -53,6 +54,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "km": "{km} km",
     },
     "fi": {
+        "one_species": "1 laji",
         "species": "{count} lajia",
         "one_bird": "1 yksilö",
         "birds": "{count} yksilöä",
@@ -146,7 +148,7 @@ def features(
         # All from one day, usually one visit: the date goes in the subtitle and the rows show only the time.
         one_day = len({observation.observed.date() for observation in species}) == 1
         day = short_date(species[0].observed) if one_day else None
-        count = texts["species"].format(count=len(species))
+        count = texts["one_species"] if len(species) == 1 else texts["species"].format(count=len(species))
         if place.hotspot_name:
             name, subtitle = place.hotspot_name, " · ".join(part for part in (count, day, where) if part)
         else:

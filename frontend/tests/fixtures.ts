@@ -3,7 +3,7 @@ import type { Sighting, YearSpecies } from "../src/types";
 
 // A made-up area, shaped like what Birds Nearby 1.3.0 registers. The sightings are invented, not eBird's.
 export const AREA = "area0001";
-export const OTHER_AREA = "area0002";
+const OTHER_AREA = "area0002";
 
 export const SENSOR_IDS = {
     notable: "sensor.lintuhavainnot_huomionarvoiset",
@@ -30,7 +30,7 @@ export function sighting(fields: Partial<Sighting> = {}): Sighting {
     };
 }
 
-export const NOTABLE: Sighting[] = [
+const NOTABLE: Sighting[] = [
     sighting({
         species_code: "palhar1",
         name: "arosuohaukka",
@@ -125,6 +125,6 @@ export function hass(lists: Lists = {}): HomeAssistant {
         locale: { language: "fi" },
         states,
         entities,
-        devices: { [AREA]: { id: AREA, name: "Esimerkkilä", manufacturer: "eBird" }, [OTHER_AREA]: { id: OTHER_AREA, name: "Muu" } },
+        devices: { [AREA]: { id: AREA, name: "Esimerkkilä" }, [OTHER_AREA]: { id: OTHER_AREA, name: "Muu" } },
     };
 }

@@ -71,7 +71,7 @@ def test_species_at_the_same_place_are_one_point() -> None:
     assert personal["geometry"]["coordinates"] == [25.6411, 60.9702], "drawn where it was reported"
     # Its own name is whatever the observer typed, so it is titled by where it is instead.
     assert personal["properties"]["name"] == "1,5 km lounaaseen"
-    assert personal["properties"]["subtitle"] == "1 lajia · 10.10."
+    assert personal["properties"]["subtitle"] == "1 laji · 10.10."
     assert personal["properties"]["details"] == [
         # One day: the date is in the subtitle and the row shows only the time.
         # Notable is the tag, in the place's own orange; the threat status stays in the text.

@@ -65,7 +65,7 @@ EVENT_TYPES = {
 class MemoryStore(Store[dict[str, Any]]):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         super().__init__(hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}")
-        # Kept in UTC: the day of installation is Home Assistant's.
+        # created_at is UTC, the installation day is the day in Home Assistant's time zone.
         self._installed = dt_util.as_local(entry.created_at).date()
 
     async def _async_migrate_func(self, old_major_version: int, old_minor_version: int, old_data: dict[str, Any]) -> dict[str, Any]:
@@ -135,6 +135,8 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
         locale = ebird_locale(self.hass.config.language)
         try:
             await self._extra_call(today, locale)
+            # Saved before the observations are asked for, so a restart after they fail doesn't repeat the day's call.
+            self._save()
             recent = await self._client.recent(self.latitude, self.longitude, self.radius_km, locale)
             notable = await self._client.notable(self.latitude, self.longitude, self.radius_km, locale)
         except EbirdAuthError as err:

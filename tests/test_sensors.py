@@ -17,7 +17,7 @@ from custom_components.birds_nearby.const import EBIRD_URL, EVENT_FIRST_IN_REGIO
 from custom_components.birds_nearby.pictures import Picture, SpeciesInfo
 from custom_components.birds_nearby.sightings import Memory
 
-from .conftest import RECENT, REGION, answer, birds_entry, observation
+from .conftest import RECENT, REGION, REGION_SPECIES, answer, birds_entry, observation
 
 NOW = datetime(2026, 10, 12, 12, 0)
 
@@ -184,6 +184,23 @@ async def test_a_failing_region_list_is_tried_once_a_day(
 
     assert entry.runtime_data.last_update_success, "the sightings are still updated"
     assert sum("spplist" in str(call[1]) for call in aioclient_mock.mock_calls) == 1
+
+
+async def test_the_days_extra_call_is_stored_when_the_observations_fail(
+    enable_custom_integrations, hass: HomeAssistant, hass_storage, aioclient_mock: AiohttpClientMocker, freezer: FrozenDateTimeFactory
+) -> None:
+    # A restart doesn't unload the entry, so only what is already stored tells the next start the call was made.
+    aioclient_mock.get(f"{EBIRD_URL}/product/spplist/{REGION}", json=REGION_SPECIES)
+    aioclient_mock.get(f"{EBIRD_URL}/data/obs/geo/recent", status=429)
+    entry = birds_entry(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    freezer.tick(11)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    assert hass_storage[f"birds_nearby.{entry.entry_id}"]["data"]["memory"]["extra_call_tried"] == "2026-10-12"
 
 
 async def test_ebird_down_at_startup_is_not_retried_within_seconds(
