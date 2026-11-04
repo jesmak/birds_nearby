@@ -3,7 +3,7 @@
 A Home Assistant integration for bird sightings within an area you choose, with the notable ones, your year list and
 first sightings of the year, a dashboard card of its own and the sightings on a map.
 
-[![GitHub Release][releases-shield]][releases] [![GitHub Release Date][release-date-shield]][releases] [![HACS][hacs-shield]][hacs] [![License][license-shield]](LICENSE)
+[![GitHub Release][releases-shield]][releases] [![GitHub Release Date][release-date-shield]][releases] [![Marketplace][marketplace-shield]][marketplace] [![License][license-shield]](LICENSE)
 
 <img src="https://raw.githubusercontent.com/jesmak/birds_nearby/main/docs/images/dashboard-light.png#gh-light-mode-only" width="1280" alt="A dashboard around Tampere, with a map of eight places where birds were seen, older ones fainter, and the list of them beside it, the place with a notable sighting open to its six species with their pictures and tags. Beside it the Birds Nearby card with the counts of notable sightings, recent species and the year list, open on the notable sighting with its picture">
 <img src="https://raw.githubusercontent.com/jesmak/birds_nearby/main/docs/images/dashboard-dark.png#gh-dark-mode-only" width="1280" alt="A dashboard around Tampere, with a map of eight places where birds were seen, older ones fainter, and the list of them beside it, the place with a notable sighting open to its six species with their pictures and tags. Beside it the Birds Nearby card with the counts of notable sightings, recent species and the year list, open on the notable sighting with its picture">
@@ -59,10 +59,10 @@ The radius is at most 50 km, which is eBird's limit. Birds only.
 
 You need an eBird API key first. See [Getting an eBird API key](#getting-an-ebird-api-key).
 
-### With HACS
+### With the Marketplace
 
-1. Add this repository to HACS custom repositories with type **Integration**
-2. Search for Birds Nearby in HACS and download it
+1. Open Settings › Marketplace and search for Birds Nearby
+2. Open it and choose Install
 3. Restart Home Assistant
 4. Add the integration in Settings › Devices & services
 
@@ -451,6 +451,6 @@ Wikimedia Commons.
 [releases-shield]: https://img.shields.io/github/release/jesmak/birds_nearby.svg?style=for-the-badge
 [release-date-shield]: https://img.shields.io/github/release-date/jesmak/birds_nearby?style=for-the-badge
 [releases]: https://github.com/jesmak/birds_nearby/releases
-[hacs-shield]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge
-[hacs]: https://hacs.xyz/docs/faq/custom_repositories/
+[marketplace-shield]: https://img.shields.io/badge/Marketplace-Default-green.svg?style=for-the-badge
+[marketplace]: https://my.home-assistant.io/redirect/marketplace_repository/?owner=jesmak&repository=birds_nearby&category=integration
 [license-shield]: https://img.shields.io/github/license/jesmak/birds_nearby.svg?style=for-the-badge
