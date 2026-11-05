@@ -455,8 +455,11 @@ export class BirdsNearbyCard extends LitElement {
             return;
         }
         const scale = drawnScale(card);
-        this.measureSplits(card, scale);
-        this.fillRows(card, scale);
+        // A layout that changes is drawn on the next render, which measures again. Rows filled to the one still drawn
+        // would hold the card at a wrong height for a frame.
+        if (this.measureSplits(card, scale)) {
+            this.fillRows(card, scale);
+        }
     }
 
     /**
@@ -464,10 +467,11 @@ export class BirdsNearbyCard extends LitElement {
      * sighting's count and time go under its texts when they wouldn't fit beside them, each text whole on one line.
      * Wrapped texts are measured on one line, each row held to its drawn height meanwhile, so nothing moves. The room is
      * each part's drawn width in fractions of a pixel, as clientWidth's whole pixels can promise more room than there is,
-     * and every drawn width is unscaled to compare with the layout's pixels.
+     * and every drawn width is unscaled to compare with the layout's pixels. Returns false when the layout changed.
      */
-    private measureSplits(card: HTMLElement, scale: number): void {
+    private measureSplits(card: HTMLElement, scale: number): boolean {
         const width = (element: Element | null) => textWidth(element) / scale;
+        let changed = false;
         const tabs = card.querySelector<HTMLElement>(".tabs");
         if (tabs) {
             const needs = [...tabs.querySelectorAll(".tab")].map((tab) =>
@@ -476,6 +480,7 @@ export class BirdsNearbyCard extends LitElement {
             const split = !tabsFit(tabs.getBoundingClientRect().width / scale, needs);
             if (split !== this.tabsSplit) {
                 this.tabsSplit = split;
+                changed = true;
             }
         }
         const rows = [...card.querySelectorAll<HTMLElement>(".row[data-key]")];
@@ -498,7 +503,9 @@ export class BirdsNearbyCard extends LitElement {
         const next = new Set([...kept, ...split]);
         if (next.size !== this.splitRows.size || [...next].some((key) => !this.splitRows.has(key))) {
             this.splitRows = next;
+            changed = true;
         }
+        return !changed;
     }
 
     /**
@@ -566,6 +573,8 @@ export class BirdsNearbyCard extends LitElement {
             css`
                 /* 11 px of padding and the border, top and bottom, make 24 px, so the parts on the 32 px step end on the rows. */
                 ha-card {
+                    /* ha-card's own transition covers every property, so a change in the rows filled would animate. */
+                    transition: none;
                     container-type: inline-size;
                     box-sizing: border-box;
                     overflow: hidden;

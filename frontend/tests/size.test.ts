@@ -66,12 +66,18 @@ function textWidths(widths: (element: Element) => number): void {
 
 /** Runs the card's next measuring frame now. */
 async function measure(element: BirdsNearbyCard): Promise<void> {
+    const card = element as unknown as { measureSoon(): void; tabsSplit: boolean; splitRows: ReadonlySet<string> };
     const frames: FrameRequestCallback[] = [];
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => frames.push(callback));
-    (element as unknown as { measureSoon(): void }).measureSoon();
-    frames.at(-1)?.(0);
+    // As on the page, a split the first frame changes is drawn, and the next frame fills the rows to it.
+    for (let frame = 0; frame < 2; frame++) {
+        const [tabs, rows] = [card.tabsSplit, card.splitRows];
+        card.measureSoon();
+        frames.at(-1)?.(0);
+        await element.updateComplete;
+        if (card.tabsSplit === tabs && card.splitRows === rows) break;
+    }
     vi.restoreAllMocks();
-    await element.updateComplete;
 }
 
 afterEach(() => {

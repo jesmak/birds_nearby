@@ -1,4 +1,4 @@
-/*! birds-nearby-card 1.3.0 | MIT License */
+/*! birds-nearby-card 1.3.1 | MIT License */
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __decorateClass = (decorators, target, key, kind) => {
@@ -597,7 +597,7 @@ function r5(r6) {
 }
 
 // src/const.ts
-var CARD_VERSION = "1.3.0";
+var CARD_VERSION = "1.3.1";
 var PLATFORM = "birds_nearby";
 var SENSORS = ["notable", "recent", "year_list"];
 var THREATENED = ["VU", "EN", "CR", "EW", "EX"];
@@ -1383,18 +1383,20 @@ var BirdsNearbyCard = class extends i4 {
       return;
     }
     const scale = drawnScale(card);
-    this.measureSplits(card, scale);
-    this.fillRows(card, scale);
+    if (this.measureSplits(card, scale)) {
+      this.fillRows(card, scale);
+    }
   }
   /**
    * Splits only what doesn't fit: the tabs go one to a row when a count or a label wouldn't fit its third whole, and a
    * sighting's count and time go under its texts when they wouldn't fit beside them, each text whole on one line.
    * Wrapped texts are measured on one line, each row held to its drawn height meanwhile, so nothing moves. The room is
    * each part's drawn width in fractions of a pixel, as clientWidth's whole pixels can promise more room than there is,
-   * and every drawn width is unscaled to compare with the layout's pixels.
+   * and every drawn width is unscaled to compare with the layout's pixels. Returns false when the layout changed.
    */
   measureSplits(card, scale) {
     const width = (element) => textWidth(element) / scale;
+    let changed = false;
     const tabs = card.querySelector(".tabs");
     if (tabs) {
       const needs = [...tabs.querySelectorAll(".tab")].map(
@@ -1403,6 +1405,7 @@ var BirdsNearbyCard = class extends i4 {
       const split2 = !tabsFit(tabs.getBoundingClientRect().width / scale, needs);
       if (split2 !== this.tabsSplit) {
         this.tabsSplit = split2;
+        changed = true;
       }
     }
     const rows = [...card.querySelectorAll(".row[data-key]")];
@@ -1424,7 +1427,9 @@ var BirdsNearbyCard = class extends i4 {
     const next = /* @__PURE__ */ new Set([...kept, ...split]);
     if (next.size !== this.splitRows.size || [...next].some((key) => !this.splitRows.has(key))) {
       this.splitRows = next;
+      changed = true;
     }
+    return !changed;
   }
   /**
    * In a sections view whose rows are left automatic, the card takes the whole rows its content needs, or the half rows
@@ -1480,6 +1485,8 @@ var BirdsNearbyCard = class extends i4 {
       i`
                 /* 11 px of padding and the border, top and bottom, make 24 px, so the parts on the 32 px step end on the rows. */
                 ha-card {
+                    /* ha-card's own transition covers every property, so a change in the rows filled would animate. */
+                    transition: none;
                     container-type: inline-size;
                     box-sizing: border-box;
                     overflow: hidden;
