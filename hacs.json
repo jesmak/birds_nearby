@@ -1,5 +1,7 @@
 {
   "name": "Birds Nearby",
   "render_readme": true,
+  "zip_release": true,
+  "filename": "birds_nearby.zip",
   "homeassistant": "2026.9.3"
 }

@@ -3,7 +3,7 @@
 A Home Assistant integration for bird sightings within an area you choose, with the notable ones, your year list and
 first sightings of the year, a dashboard card of its own and the sightings on a map.
 
-[![GitHub Release][releases-shield]][releases] [![GitHub Release Date][release-date-shield]][releases] [![Marketplace][marketplace-shield]][marketplace] [![License][license-shield]](LICENSE)
+[![GitHub Release][releases-shield]][releases] [![GitHub Release Date][release-date-shield]][releases] [![Downloads][downloads-shield]][releases] [![Marketplace][marketplace-shield]][marketplace] [![License][license-shield]](LICENSE)
 
 <img src="https://raw.githubusercontent.com/jesmak/birds_nearby/main/docs/images/dashboard-light.png#gh-light-mode-only" width="1280" alt="A dashboard around Tampere, with a map of eight places where birds were seen, older ones fainter, and the list of them beside it, the place with a notable sighting open to its six species with their pictures and tags. Beside it the Birds Nearby card with the counts of notable sightings, recent species and the year list, open on the notable sighting with its picture">
 <img src="https://raw.githubusercontent.com/jesmak/birds_nearby/main/docs/images/dashboard-dark.png#gh-dark-mode-only" width="1280" alt="A dashboard around Tampere, with a map of eight places where birds were seen, older ones fainter, and the list of them beside it, the place with a notable sighting open to its six species with their pictures and tags. Beside it the Birds Nearby card with the counts of notable sightings, recent species and the year list, open on the notable sighting with its picture">
@@ -451,6 +451,7 @@ Wikimedia Commons.
 [releases-shield]: https://img.shields.io/github/release/jesmak/birds_nearby.svg?style=for-the-badge
 [release-date-shield]: https://img.shields.io/github/release-date/jesmak/birds_nearby?style=for-the-badge
 [releases]: https://github.com/jesmak/birds_nearby/releases
+[downloads-shield]: https://img.shields.io/github/downloads/jesmak/birds_nearby/total.svg?style=for-the-badge
 [marketplace-shield]: https://img.shields.io/badge/Marketplace-Default-green.svg?style=for-the-badge
 [marketplace]: https://my.home-assistant.io/redirect/marketplace_repository/?owner=jesmak&repository=birds_nearby&category=integration
 [license-shield]: https://img.shields.io/github/license/jesmak/birds_nearby.svg?style=for-the-badge
