@@ -14,7 +14,7 @@ import { ScrollFade, fadeStyles } from "./fade";
 import type { HomeAssistant } from "./hass";
 import { gridMinRows, heightCardSize, heightStyle, validHeight } from "./height";
 import { LANGUAGE_CODES, browserLanguage, translate } from "./localize/localize";
-import { fillLimit, filledHeight, filledStyle, validRowStep } from "./rows";
+import { drawnScale, fillLimit, filledHeight, filledStyle, spareRoom, validRowStep } from "./rows";
 import {
     areaDevices,
     areaSensors,
@@ -50,8 +50,8 @@ const TAB_PADDING = 2 * 4;
 /** A row's room beside its texts: its side padding, the picture and the gaps on either side of the texts. */
 const ROW_SIDES = 2 * 8 + 48 + 2 * 12;
 /**
- * Room for a measure read in fractions of a pixel, so a text exactly as wide as its room still fits, and a content
- * unscaled with floating-point noise counts as the whole pixels it is. Smaller than the 1/64 px a browser lays out in.
+ * Room for a measure read in fractions of a pixel, so a text exactly as wide as its room still fits. Smaller than the
+ * 1/64 px a browser lays out in.
  */
 const SLACK_PX = 0.01;
 
@@ -74,17 +74,6 @@ function textWidth(element: Element | null): number {
     const range = document.createRange();
     range.selectNodeContents(element);
     return range.getBoundingClientRect().width;
-}
-
-/**
- * How much the card is drawn scaled, 1 unless something scales it, such as a dialog's opening animation (0.8 to 1).
- * Drawn widths and a range's are scaled while the card's padding and the constants above are not, so drawn measures
- * are divided by it. A scale doesn't resize the card, so no ResizeObserver would correct a measure made mid-scale.
- */
-function drawnScale(card: HTMLElement): number {
-    const layout = px(getComputedStyle(card).width);
-    const drawn = card.getBoundingClientRect().width;
-    return layout > 0 && drawn > 0 ? drawn / layout : 1;
 }
 
 function px(value: string): number {
@@ -540,10 +529,8 @@ export class BirdsNearbyCard extends LitElement {
         } else if (message) {
             content -= px(getComputedStyle(message).paddingTop);
         }
-        // Up to the whole pixel, so a content a fraction over, such as 120.4, still ends inside the rows. The slack keeps
-        // noise from unscaling mid-scale (48 drawn at 0.8 unscales to 48.00000000000001) from costing a pixel either way.
-        const filled = filledHeight(Math.ceil(content - SLACK_PX), this.config ?? {}, limit);
-        const spare = Math.max(0, Math.floor(filled - content + SLACK_PX));
+        const filled = filledHeight(content, this.config ?? {}, limit);
+        const spare = spareRoom(filled, content);
         if (filled !== this.filled || spare !== this.spare) {
             this.filled = filled;
             this.spare = spare;
