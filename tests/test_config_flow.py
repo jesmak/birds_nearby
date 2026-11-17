@@ -6,7 +6,7 @@ from homeassistant.config_entries import SOURCE_USER
 from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
-from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
+from pytest_homeassistant.test_util.aiohttp import AiohttpClientMocker
 
 from custom_components.birds_nearby.const import (
     CONF_API_KEY,
@@ -31,9 +31,7 @@ async def start(hass: HomeAssistant):
     return result
 
 
-async def test_adding_an_area_checks_the_key_and_picks_the_region(
-    enable_custom_integrations, hass: HomeAssistant, ebird: AiohttpClientMocker
-) -> None:
+async def test_adding_an_area_checks_the_key_and_picks_the_region(hass: HomeAssistant, ebird: AiohttpClientMocker) -> None:
     result = await start(hass)
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {CONF_NAME: "Garden birds", CONF_API_KEY: API_KEY, CONF_LOCATION: AREA}
@@ -51,9 +49,7 @@ async def test_adding_an_area_checks_the_key_and_picks_the_region(
     assert hotspot_call[3]["x-ebirdapitoken"] == API_KEY
 
 
-async def test_a_hotspot_without_coordinates_is_passed_over(
-    enable_custom_integrations, hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
-) -> None:
+async def test_a_hotspot_without_coordinates_is_passed_over(hass: HomeAssistant, aioclient_mock: AiohttpClientMocker) -> None:
     hotspots = [{**HOTSPOTS[1], "subnational1Code": "FI-97", "lat": None}, *HOTSPOTS]
     aioclient_mock.get(f"{EBIRD_URL}/ref/hotspot/geo", json=hotspots)
 
@@ -66,7 +62,7 @@ async def test_a_hotspot_without_coordinates_is_passed_over(
     assert result["options"][CONF_REGION] == REGION
 
 
-async def test_a_refused_key(enable_custom_integrations, hass: HomeAssistant, aioclient_mock: AiohttpClientMocker) -> None:
+async def test_a_refused_key(hass: HomeAssistant, aioclient_mock: AiohttpClientMocker) -> None:
     aioclient_mock.get(f"{EBIRD_URL}/ref/hotspot/geo", status=403)
 
     result = await start(hass)
@@ -78,7 +74,7 @@ async def test_a_refused_key(enable_custom_integrations, hass: HomeAssistant, ai
     assert result["errors"] == {"base": "invalid_auth"}
 
 
-async def test_a_radius_beyond_ebirds_limit(enable_custom_integrations, hass: HomeAssistant, ebird: AiohttpClientMocker) -> None:
+async def test_a_radius_beyond_ebirds_limit(hass: HomeAssistant, ebird: AiohttpClientMocker) -> None:
     result = await start(hass)
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {CONF_NAME: "Birds Nearby", CONF_API_KEY: API_KEY, CONF_LOCATION: {**AREA, "radius": 80000}}
@@ -88,7 +84,7 @@ async def test_a_radius_beyond_ebirds_limit(enable_custom_integrations, hass: Ho
     assert ebird.call_count == 0
 
 
-async def test_the_same_area_twice(enable_custom_integrations, hass: HomeAssistant, ebird: AiohttpClientMocker) -> None:
+async def test_the_same_area_twice(hass: HomeAssistant, ebird: AiohttpClientMocker) -> None:
     birds_entry(hass)
     result = await start(hass)
     result = await hass.config_entries.flow.async_configure(
@@ -98,9 +94,7 @@ async def test_the_same_area_twice(enable_custom_integrations, hass: HomeAssista
     assert result["reason"] == "already_configured"
 
 
-async def test_a_new_key_after_ebird_refuses_the_old_one(
-    enable_custom_integrations, hass: HomeAssistant, ebird: AiohttpClientMocker
-) -> None:
+async def test_a_new_key_after_ebird_refuses_the_old_one(hass: HomeAssistant, ebird: AiohttpClientMocker) -> None:
     entry = birds_entry(hass)
     result = await entry.start_reauth_flow(hass)
     assert result["step_id"] == "reauth_confirm"
@@ -113,7 +107,7 @@ async def test_a_new_key_after_ebird_refuses_the_old_one(
     assert entry.data[CONF_API_KEY] == "new-key-0002"
 
 
-async def test_options(enable_custom_integrations, hass: HomeAssistant, ebird: AiohttpClientMocker) -> None:
+async def test_options(hass: HomeAssistant, ebird: AiohttpClientMocker) -> None:
     entry = birds_entry(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()

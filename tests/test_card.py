@@ -9,8 +9,8 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.loader import async_get_integration
 from homeassistant.setup import async_setup_component
-from pytest_homeassistant_custom_component.common import MockConfigEntry
-from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
+from pytest_homeassistant.common import MockConfigEntry
+from pytest_homeassistant.test_util.aiohttp import AiohttpClientMocker
 
 from custom_components.birds_nearby.const import DOMAIN, EBIRD_URL
 
@@ -87,7 +87,7 @@ def _warnings(caplog) -> list[str]:
     ],
 )
 async def test_storage_mode_keeps_one_resource_at_the_current_version(
-    enable_custom_integrations, hass: HomeAssistant, hass_storage, aioclient_mock, caplog, before, after
+    hass: HomeAssistant, hass_storage, aioclient_mock, caplog, before, after
 ):
     await _setup(hass, hass_storage, aioclient_mock, before)
     assert await _urls(hass) == [await _url(hass, url) for url in after]
@@ -98,7 +98,7 @@ async def test_storage_mode_keeps_one_resource_at_the_current_version(
     assert _warnings(caplog) == []
 
 
-async def test_two_areas_starting_together_add_one_resource(enable_custom_integrations, hass: HomeAssistant, hass_storage, aioclient_mock):
+async def test_two_areas_starting_together_add_one_resource(hass: HomeAssistant, hass_storage, aioclient_mock):
     # Their setups run side by side, and both find no resource of the card's when they start.
     await _setup(hass, hass_storage, aioclient_mock, [], areas=2)
     assert await _urls(hass) == [await _url(hass, CURRENT)]
@@ -119,7 +119,7 @@ async def test_two_areas_starting_together_add_one_resource(enable_custom_integr
     ],
 )
 async def test_yaml_mode_is_left_alone_and_asks_for_the_current_line(
-    enable_custom_integrations, hass: HomeAssistant, hass_storage, aioclient_mock, caplog, resources, asked
+    hass: HomeAssistant, hass_storage, aioclient_mock, caplog, resources, asked
 ):
     await _setup(hass, hass_storage, aioclient_mock, resources, yaml=True)
     current = await _url(hass, CURRENT)
@@ -135,9 +135,7 @@ async def test_yaml_mode_is_left_alone_and_asks_for_the_current_line(
         assert f"Change {resources[0]} in them to {current}" in warnings[0]
 
 
-async def test_removing_the_integration_in_yaml_mode_asks_to_remove_its_lines(
-    enable_custom_integrations, hass: HomeAssistant, hass_storage, aioclient_mock, caplog
-):
+async def test_removing_the_integration_in_yaml_mode_asks_to_remove_its_lines(hass: HomeAssistant, hass_storage, aioclient_mock, caplog):
     [entry] = await _setup(hass, hass_storage, aioclient_mock, [OTHER, OLD, CURRENT], yaml=True)
     caplog.clear()
     await hass.config_entries.async_remove(entry.entry_id)
@@ -162,7 +160,7 @@ async def test_removing_the_integration_in_yaml_mode_asks_to_remove_its_lines(
 )
 @pytest.mark.parametrize("disabled", [False, True], ids=["set up", "disabled since the start"])
 async def test_removing_the_last_area_removes_its_resources_only(
-    enable_custom_integrations, hass: HomeAssistant, hass_storage, aioclient_mock, areas, removed, kept, disabled
+    hass: HomeAssistant, hass_storage, aioclient_mock, areas, removed, kept, disabled
 ):
     entries = await _setup(hass, hass_storage, aioclient_mock, [OTHER, OLD, CURRENT], disabled=disabled, areas=areas)
     before = await _urls(hass)
@@ -172,9 +170,7 @@ async def test_removing_the_last_area_removes_its_resources_only(
     assert await _urls(hass) == (before if kept else [OTHER])
 
 
-async def test_removing_an_area_in_yaml_mode_asks_nothing_while_another_is_left(
-    enable_custom_integrations, hass: HomeAssistant, hass_storage, aioclient_mock, caplog
-):
+async def test_removing_an_area_in_yaml_mode_asks_nothing_while_another_is_left(hass: HomeAssistant, hass_storage, aioclient_mock, caplog):
     entries = await _setup(hass, hass_storage, aioclient_mock, [CURRENT], yaml=True, areas=2)
     caplog.clear()
     await hass.config_entries.async_remove(entries[0].entry_id)
@@ -182,9 +178,7 @@ async def test_removing_an_area_in_yaml_mode_asks_nothing_while_another_is_left(
     assert _warnings(caplog) == []
 
 
-async def test_an_area_ebird_does_not_answer_for_still_gets_the_card(
-    enable_custom_integrations, hass: HomeAssistant, hass_storage, aioclient_mock
-):
+async def test_an_area_ebird_does_not_answer_for_still_gets_the_card(hass: HomeAssistant, hass_storage, aioclient_mock):
     _store(hass_storage, [])
     assert await async_setup_component(hass, "lovelace", {})
     aioclient_mock.get(f"{EBIRD_URL}/data/obs/geo/recent", exc=aiohttp.ClientError)
@@ -196,7 +190,7 @@ async def test_an_area_ebird_does_not_answer_for_still_gets_the_card(
     assert await _urls(hass) == [await _url(hass, CURRENT)]
 
 
-async def test_the_card_is_served(enable_custom_integrations, hass: HomeAssistant, hass_storage, aioclient_mock, hass_client):
+async def test_the_card_is_served(hass: HomeAssistant, hass_storage, aioclient_mock, hass_client):
     await _setup(hass, hass_storage, aioclient_mock, [])
     response = await (await hass_client()).get(await _url(hass, CURRENT))
     assert response.status == 200

@@ -10,8 +10,8 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.common import async_capture_events, async_fire_time_changed
-from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
+from pytest_homeassistant.common import async_capture_events, async_fire_time_changed
+from pytest_homeassistant.test_util.aiohttp import AiohttpClientMocker
 
 from custom_components.birds_nearby.const import EBIRD_URL, EVENT_FIRST_IN_REGION, EVENT_FIRST_OF_YEAR, EVENT_NOTABLE
 from custom_components.birds_nearby.pictures import Picture, SpeciesInfo
@@ -44,9 +44,7 @@ async def set_up(hass: HomeAssistant, **options):
     return entry
 
 
-async def test_the_first_poll_fills_the_sensors_without_events(
-    enable_custom_integrations, hass: HomeAssistant, ebird: AiohttpClientMocker
-) -> None:
+async def test_the_first_poll_fills_the_sensors_without_events(hass: HomeAssistant, ebird: AiohttpClientMocker) -> None:
     events = async_capture_events(hass, EVENT_FIRST_OF_YEAR)
     await set_up(hass)
 
@@ -67,7 +65,7 @@ async def test_the_first_poll_fills_the_sensors_without_events(
     assert "eBird" in feed.attributes["attribution"]
 
 
-async def test_the_calls_to_ebird(enable_custom_integrations, hass: HomeAssistant, ebird: AiohttpClientMocker) -> None:
+async def test_the_calls_to_ebird(hass: HomeAssistant, ebird: AiohttpClientMocker) -> None:
     await set_up(hass)
 
     ebird_calls = [call for call in ebird.mock_calls if str(call[1]).startswith(EBIRD_URL)]
@@ -80,7 +78,6 @@ async def test_the_calls_to_ebird(enable_custom_integrations, hass: HomeAssistan
 
 
 async def test_a_rarity_on_the_next_poll(
-    enable_custom_integrations,
     hass: HomeAssistant,
     ebird: AiohttpClientMocker,
     freezer: FrozenDateTimeFactory,
@@ -129,9 +126,7 @@ async def test_a_rarity_on_the_next_poll(
     assert not any("spplist" in str(call[1]) for call in ebird.mock_calls)
 
 
-async def test_a_rarity_on_many_checklists_is_listed_once(
-    enable_custom_integrations, hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
-) -> None:
+async def test_a_rarity_on_many_checklists_is_listed_once(hass: HomeAssistant, aioclient_mock: AiohttpClientMocker) -> None:
     reports = [{**RARITY, "subId": f"S90011{n}", "obsDt": f"2026-10-1{n} 09:00"} for n in range(3)]
     answer(aioclient_mock, recent=[*RECENT, RARITY], notable=reports)
     await set_up(hass)
@@ -142,7 +137,7 @@ async def test_a_rarity_on_many_checklists_is_listed_once(
     assert (sighting["species_code"], sighting["observed"], sighting["reports"]) == ("palhar1", "2026-10-12T09:00", 3)
 
 
-async def test_the_memory_survives_a_restart(enable_custom_integrations, hass: HomeAssistant, ebird: AiohttpClientMocker) -> None:
+async def test_the_memory_survives_a_restart(hass: HomeAssistant, ebird: AiohttpClientMocker) -> None:
     entry = await set_up(hass)
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
@@ -155,9 +150,7 @@ async def test_the_memory_survives_a_restart(enable_custom_integrations, hass: H
     assert hass.states.get("sensor.birds_nearby_year_list").state == "2"
 
 
-async def test_a_refused_key_asks_for_a_new_one(
-    enable_custom_integrations, hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
-) -> None:
+async def test_a_refused_key_asks_for_a_new_one(hass: HomeAssistant, aioclient_mock: AiohttpClientMocker) -> None:
     aioclient_mock.get(f"{EBIRD_URL}/product/spplist/{REGION}", status=403)
     entry = birds_entry(hass)
 
@@ -169,7 +162,7 @@ async def test_a_refused_key_asks_for_a_new_one(
 
 
 async def test_a_failing_region_list_is_tried_once_a_day(
-    enable_custom_integrations, hass: HomeAssistant, aioclient_mock: AiohttpClientMocker, freezer: FrozenDateTimeFactory
+    hass: HomeAssistant, aioclient_mock: AiohttpClientMocker, freezer: FrozenDateTimeFactory
 ) -> None:
     aioclient_mock.get(f"{EBIRD_URL}/product/spplist/{REGION}", status=500)
     answer(aioclient_mock)
@@ -187,7 +180,7 @@ async def test_a_failing_region_list_is_tried_once_a_day(
 
 
 async def test_the_days_extra_call_is_stored_when_the_observations_fail(
-    enable_custom_integrations, hass: HomeAssistant, hass_storage, aioclient_mock: AiohttpClientMocker, freezer: FrozenDateTimeFactory
+    hass: HomeAssistant, hass_storage, aioclient_mock: AiohttpClientMocker, freezer: FrozenDateTimeFactory
 ) -> None:
     # A restart doesn't unload the entry, so only what is already stored tells the next start the call was made.
     aioclient_mock.get(f"{EBIRD_URL}/product/spplist/{REGION}", json=REGION_SPECIES)
@@ -204,7 +197,7 @@ async def test_the_days_extra_call_is_stored_when_the_observations_fail(
 
 
 async def test_ebird_down_at_startup_is_not_retried_within_seconds(
-    enable_custom_integrations, hass: HomeAssistant, aioclient_mock: AiohttpClientMocker, freezer: FrozenDateTimeFactory
+    hass: HomeAssistant, aioclient_mock: AiohttpClientMocker, freezer: FrozenDateTimeFactory
 ) -> None:
     aioclient_mock.get(f"{EBIRD_URL}/product/spplist/{REGION}", status=429)
     aioclient_mock.get(f"{EBIRD_URL}/data/obs/geo/recent", status=429)
@@ -222,7 +215,7 @@ async def test_ebird_down_at_startup_is_not_retried_within_seconds(
 
 
 async def test_a_refresh_by_hand_doesnt_poll_ebird_more_often_than_every_15_minutes(
-    enable_custom_integrations, hass: HomeAssistant, ebird: AiohttpClientMocker, freezer: FrozenDateTimeFactory
+    hass: HomeAssistant, ebird: AiohttpClientMocker, freezer: FrozenDateTimeFactory
 ) -> None:
     assert await async_setup_component(hass, "homeassistant", {})
     await set_up(hass)
@@ -242,7 +235,7 @@ async def test_a_refresh_by_hand_doesnt_poll_ebird_more_often_than_every_15_minu
 
 
 async def test_an_update_a_moment_early_at_the_shortest_interval_still_polls(
-    enable_custom_integrations, hass: HomeAssistant, ebird: AiohttpClientMocker, freezer: FrozenDateTimeFactory
+    hass: HomeAssistant, ebird: AiohttpClientMocker, freezer: FrozenDateTimeFactory
 ) -> None:
     entry = await set_up(hass, scan_interval=15)
     ebird.clear_requests()
@@ -255,7 +248,7 @@ async def test_an_update_a_moment_early_at_the_shortest_interval_still_polls(
 
 
 async def test_a_reload_right_after_a_poll_keeps_its_memory(
-    enable_custom_integrations, hass: HomeAssistant, ebird: AiohttpClientMocker, freezer: FrozenDateTimeFactory
+    hass: HomeAssistant, ebird: AiohttpClientMocker, freezer: FrozenDateTimeFactory
 ) -> None:
     entry = await set_up(hass)
     events = async_capture_events(hass, EVENT_FIRST_OF_YEAR)
@@ -274,7 +267,7 @@ async def test_a_reload_right_after_a_poll_keeps_its_memory(
 
 
 async def test_an_unexpected_observation_fails_the_update_cleanly(
-    enable_custom_integrations, hass: HomeAssistant, ebird: AiohttpClientMocker, freezer: FrozenDateTimeFactory
+    hass: HomeAssistant, ebird: AiohttpClientMocker, freezer: FrozenDateTimeFactory
 ) -> None:
     entry = await set_up(hass)
     broken = observation()
@@ -289,7 +282,7 @@ async def test_an_unexpected_observation_fails_the_update_cleanly(
 
 
 async def test_a_memory_from_1_2_forgets_its_backfill_and_looks_up_its_taxonomy(
-    enable_custom_integrations, hass: HomeAssistant, hass_storage, ebird: AiohttpClientMocker, freezer: FrozenDateTimeFactory
+    hass: HomeAssistant, hass_storage, ebird: AiohttpClientMocker, freezer: FrozenDateTimeFactory
 ) -> None:
     # Installed on the evening of 1 October, already 2 October in UTC. The first poll dated each species by its newest
     # sighting, and kept a hybrid.
@@ -353,7 +346,6 @@ async def test_a_memory_from_1_2_forgets_its_backfill_and_looks_up_its_taxonomy(
 
 
 async def test_an_event_carries_its_species_picture(
-    enable_custom_integrations,
     hass: HomeAssistant,
     ebird: AiohttpClientMocker,
     freezer: FrozenDateTimeFactory,
@@ -376,7 +368,6 @@ async def test_an_event_carries_its_species_picture(
 
 
 async def test_the_year_list_has_the_pictures_of_species_no_longer_sighted(
-    enable_custom_integrations,
     hass: HomeAssistant,
     ebird: AiohttpClientMocker,
     freezer: FrozenDateTimeFactory,
@@ -407,7 +398,7 @@ async def test_the_year_list_has_the_pictures_of_species_no_longer_sighted(
 
 
 async def test_the_taxonomy_is_asked_every_other_day_at_most(
-    enable_custom_integrations, hass: HomeAssistant, aioclient_mock: AiohttpClientMocker, freezer: FrozenDateTimeFactory
+    hass: HomeAssistant, aioclient_mock: AiohttpClientMocker, freezer: FrozenDateTimeFactory
 ) -> None:
     # eBird keeps failing to answer for the taxonomy: the region's list still comes every other day.
     aioclient_mock.get(f"{EBIRD_URL}/ref/taxonomy/ebird", status=500)

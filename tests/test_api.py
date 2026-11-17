@@ -5,7 +5,7 @@ from __future__ import annotations
 import aiohttp
 import pytest
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
+from pytest_homeassistant.test_util.aiohttp import AiohttpClientMocker
 
 from custom_components.birds_nearby.api import EbirdClient
 from custom_components.birds_nearby.const import EBIRD_URL
