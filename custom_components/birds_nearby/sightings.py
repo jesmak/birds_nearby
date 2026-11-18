@@ -177,6 +177,9 @@ class Memory:
     # Codes already announced as a first record in the region, so a later checklist doesn't repeat it. Read as the
     # species they count as, so a group's lookup after its announcement counts too.
     region_announced: list[str] = field(default_factory=list)
+    # The centre and radius the sightings were last asked for, as sent to eBird. None in a memory from before 1.4.0.
+    area: list[float] | None = None
+    # False until the first poll, and again for one poll after the area changes: that poll only fills the memory.
     initialized: bool = False
 
     @classmethod
@@ -378,7 +381,8 @@ def remember(
 ) -> list[Event]:
     """Adds a poll's observations to the memory, and returns the events they cause.
 
-    The first poll only fills the memory from the last 30 days, without events, and with no first dates.
+    The first poll, and the first one after the area changes, only fills the memory from the last 30 days: no events,
+    no first dates for the species it adds, and the first dates already known left as they are.
     """
     if today.year != memory.year:
         memory.past_years[str(memory.year)] = {"since": memory.year_started, "first_seen": memory.year_list}
@@ -471,8 +475,10 @@ def remember(
         # empty: the species was seen before the installation.
         if first_dates is not None and listed_as is not None:
             first = first_dates.get(listed_as)
-            if first is None or seen_on.isoformat() < first:
+            if first is None:
                 first_dates[listed_as] = seen_on.isoformat() if memory.initialized else ""
+            elif memory.initialized and seen_on.isoformat() < first:
+                first_dates[listed_as] = seen_on.isoformat()
         if previous is None or seen_on.isoformat() > previous:
             memory.last_seen[species] = seen_on.isoformat()
 

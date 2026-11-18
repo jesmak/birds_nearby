@@ -33,6 +33,7 @@ from .const import (
     EVENT_FIRST_OF_YEAR,
     EVENT_NOTABLE,
     MIN_SCAN_MINUTES,
+    REQUEST_DECIMALS,
 )
 from .exceptions import EbirdAuthError, EbirdError
 from .feed import CENTRE_KM, direction, distance_and_bearing
@@ -121,6 +122,11 @@ class BirdsCoordinator(DataUpdateCoordinator[Sightings]):
         if stored:
             self.memory = Memory.from_dict(stored["memory"])
             self.species = {code: SpeciesInfo.from_dict(data) for code, data in stored.get("species", {}).items()}
+        area = [round(self.latitude, REQUEST_DECIMALS), round(self.longitude, REQUEST_DECIMALS), self.radius_km]
+        if self.memory.area not in (None, area):
+            # Everything the new area brings in would look new: every species of a wider radius a first of the year.
+            self.memory.initialized = False
+        self.memory.area = area
 
     async def async_save(self) -> None:
         """Writes the memory now, so a reload right after a poll can't lose it and fire its events again."""

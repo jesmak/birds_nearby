@@ -1,4 +1,4 @@
-"""Config flow: an area and the user's own eBird API key, a new key when eBird refuses it, and the options."""
+"""Config flow: an area and the user's own eBird API key, a new key when eBird refuses it, a changed area, and the options."""
 
 from __future__ import annotations
 
@@ -42,6 +42,7 @@ from .const import (
     MAX_SCAN_MINUTES,
     MIN_BACK_DAYS,
     MIN_SCAN_MINUTES,
+    REQUEST_DECIMALS,
     WINDOW_DAYS,
 )
 from .exceptions import EbirdAuthError, EbirdError
@@ -58,6 +59,22 @@ def _number(minimum: int, maximum: int) -> NumberSelector:
     return NumberSelector(NumberSelectorConfig(min=minimum, max=maximum, step=1, mode=NumberSelectorMode.BOX))
 
 
+def _area(location: dict[str, Any]) -> tuple[float, float, int]:
+    """The centre and the radius in kilometres, from the map selector's value."""
+    radius_km = round(float(location.get("radius", DEFAULT_RADIUS_KM * 1000)) / 1000)
+    return float(location["latitude"]), float(location["longitude"]), radius_km
+
+
+def _area_field(latitude: float, longitude: float, radius_km: int) -> dict[vol.Required, LocationSelector]:
+    default = {"latitude": latitude, "longitude": longitude, "radius": radius_km * 1000}
+    return {vol.Required(CONF_LOCATION, default=default): LocationSelector(LocationSelectorConfig(radius=True))}
+
+
+def _unique_id(latitude: float, longitude: float) -> str:
+    """The centre as it is sent to eBird: two areas with the same one would ask for the same sightings."""
+    return f"{latitude:.{REQUEST_DECIMALS}f}_{longitude:.{REQUEST_DECIMALS}f}"
+
+
 class BirdsConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
     MINOR_VERSION = 1
@@ -66,13 +83,11 @@ class BirdsConfigFlow(ConfigFlow, domain=DOMAIN):
         """An area around a point, home by default, and the user's eBird API key."""
         errors: dict[str, str] = {}
         if user_input is not None:
-            location = user_input[CONF_LOCATION]
-            latitude, longitude = float(location["latitude"]), float(location["longitude"])
-            radius_km = round(float(location.get("radius", DEFAULT_RADIUS_KM * 1000)) / 1000)
+            latitude, longitude, radius_km = _area(user_input[CONF_LOCATION])
             if not 1 <= radius_km <= MAX_RADIUS_KM:
                 errors[CONF_LOCATION] = "radius_out_of_range"
             else:
-                await self.async_set_unique_id(f"{latitude:.2f}_{longitude:.2f}")
+                await self.async_set_unique_id(_unique_id(latitude, longitude))
                 self._abort_if_unique_id_configured()
                 region, error = await self._check_key(user_input[CONF_API_KEY], latitude, longitude)
                 if error:
@@ -98,14 +113,7 @@ class BirdsConfigFlow(ConfigFlow, domain=DOMAIN):
             {
                 vol.Required(CONF_NAME, default=DEFAULT_NAME): str,
                 vol.Required(CONF_API_KEY): KEY_SELECTOR,
-                vol.Required(
-                    CONF_LOCATION,
-                    default={
-                        "latitude": self.hass.config.latitude,
-                        "longitude": self.hass.config.longitude,
-                        "radius": DEFAULT_RADIUS_KM * 1000,
-                    },
-                ): LocationSelector(LocationSelectorConfig(radius=True)),
+                **_area_field(self.hass.config.latitude, self.hass.config.longitude, DEFAULT_RADIUS_KM),
             }
         )
         return self.async_show_form(
@@ -131,6 +139,44 @@ class BirdsConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="reauth_confirm",
             data_schema=vol.Schema({vol.Required(CONF_API_KEY): KEY_SELECTOR}),
+            description_placeholders={"name": entry.title},
+            errors=errors,
+        )
+
+    async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Another centre or radius for the area. Its memory stays, and the coordinator takes the next poll without events.
+
+        A moved centre gets its region for first records picked again, as the old one may be another county's.
+        """
+        entry = self._get_reconfigure_entry()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            latitude, longitude, radius_km = _area(user_input[CONF_LOCATION])
+            unique_id = _unique_id(latitude, longitude)
+            other = self.hass.config_entries.async_entry_for_domain_unique_id(DOMAIN, unique_id)
+            if not 1 <= radius_km <= MAX_RADIUS_KM:
+                errors[CONF_LOCATION] = "radius_out_of_range"
+            elif other and other.entry_id != entry.entry_id:
+                return self.async_abort(reason="already_configured")
+            else:
+                changes: dict[str, Any] = {
+                    "unique_id": unique_id,
+                    "data_updates": {"latitude": latitude, "longitude": longitude, CONF_RADIUS_KM: radius_km},
+                }
+                error = None
+                if unique_id != _unique_id(entry.data["latitude"], entry.data["longitude"]):
+                    region, error = await self._check_key(entry.data[CONF_API_KEY], latitude, longitude)
+                    changes["options"] = {**entry.options, CONF_REGION: region or ""}
+                if error:
+                    errors["base"] = error
+                else:
+                    return self.async_update_reload_and_abort(entry, **changes, reload_even_if_entry_is_unchanged=False)
+
+        current = user_input[CONF_LOCATION] if user_input else None
+        area = _area(current) if current else (entry.data["latitude"], entry.data["longitude"], entry.data[CONF_RADIUS_KM])
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=vol.Schema(_area_field(*area)),
             description_placeholders={"name": entry.title},
             errors=errors,
         )

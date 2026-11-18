@@ -15,6 +15,16 @@
           "location": "The centre and radius of the area. The radius can be at most 50 km."
         }
       },
+      "reconfigure": {
+        "title": "Change the area",
+        "description": "The centre and radius of {name}. The year list and everything else the integration remembers are kept. The sightings the new area brings in fire no events at the first update.",
+        "data": {
+          "location": "Area"
+        },
+        "data_description": {
+          "location": "The radius can be at most 50 km. When the centre moves, the region for first records is picked again from the nearest hotspot."
+        }
+      },
       "reauth_confirm": {
         "title": "New eBird API key",
         "description": "eBird no longer accepts the API key of {name}. Enter a new one.",
@@ -30,7 +40,8 @@
     },
     "abort": {
       "already_configured": "This area has already been added.",
-      "reauth_successful": "The new API key was saved."
+      "reauth_successful": "The new API key was saved.",
+      "reconfigure_successful": "The area was changed."
     }
   },
   "options": {

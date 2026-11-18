@@ -111,6 +111,11 @@ another area, such as a summer cottage.
 
 If eBird stops accepting the key, Home Assistant asks for a new one.
 
+The area can be changed later with Reconfigure in the integration's menu. The year list and everything else the
+integration remembers are kept. The first update after the change fires no events, since every sighting the new area
+brings in would look new, and the species it adds to the year list get no first date. When the centre moves, the
+region for first records is picked again from the nearest hotspot, so a region set by hand has to be set again.
+
 ### Options
 
 | Name                     | Type   | Description                                                                                                           | Default                  |
@@ -426,7 +431,7 @@ built card doesn't match `frontend/`, run `git config core.hooksPath .githooks` 
 | Path                           | What it contains                                                              |
 | ------------------------------ | ----------------------------------------------------------------------------- |
 | `__init__.py`                  | Setup                                                                         |
-| `config_flow.py`               | Adding an area, a new key, the options                                        |
+| `config_flow.py`               | Adding an area, a new key, a changed area, the options                        |
 | `api.py`                       | eBird's API                                                                   |
 | `sightings.py`                 | Reading observations, the memory, and what counts as new                      |
 | `pictures.py`                  | Finding a species' status and picture through Wikidata, Wikipedia and Commons |

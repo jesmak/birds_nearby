@@ -15,6 +15,16 @@
           "location": "Alueen keskipiste ja säde. Säde voi olla enintään 50 km."
         }
       },
+      "reconfigure": {
+        "title": "Muuta aluetta",
+        "description": "Alueen {name} keskipiste ja säde. Vuosilista ja kaikki muu integraation muistama säilyy. Uuden alueen mukana tulevista havainnoista ei luoda tapahtumia ensimmäisellä päivityksellä.",
+        "data": {
+          "location": "Alue"
+        },
+        "data_description": {
+          "location": "Säde voi olla enintään 50 km. Kun keskipiste siirtyy, ensihavaintojen alue valitaan uudelleen lähimmän havaintopaikan mukaan."
+        }
+      },
       "reauth_confirm": {
         "title": "Uusi eBird-API-avain",
         "description": "eBird ei enää hyväksy alueen {name} API-avainta. Anna uusi avain.",
@@ -30,7 +40,8 @@
     },
     "abort": {
       "already_configured": "Tämä alue on jo lisätty.",
-      "reauth_successful": "Uusi API-avain tallennettiin."
+      "reauth_successful": "Uusi API-avain tallennettiin.",
+      "reconfigure_successful": "Aluetta muutettiin."
     }
   },
   "options": {

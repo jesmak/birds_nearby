@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
@@ -23,6 +25,9 @@ from custom_components.birds_nearby.const import (
 from .conftest import API_KEY, HOTSPOTS, LATITUDE, LONGITUDE, REGION, birds_entry
 
 AREA = {"latitude": LATITUDE, "longitude": LONGITUDE, "radius": 20000}
+
+# Keeps the reload after a reconfigure from polling, so the calls counted are the flow's own.
+NO_SETUP = patch("custom_components.birds_nearby.async_setup_entry", return_value=True)
 
 
 async def start(hass: HomeAssistant):
@@ -125,3 +130,62 @@ async def test_options(hass: HomeAssistant, ebird: AiohttpClientMocker) -> None:
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options == {CONF_SCAN_INTERVAL: 30, CONF_RECENT_DAYS: 3, CONF_BACK_DAYS: 60, CONF_REGION: "US-NY-109"}
+
+
+async def test_a_new_radius_keeps_the_region_without_asking_ebird(hass: HomeAssistant, ebird: AiohttpClientMocker) -> None:
+    entry = birds_entry(hass, region="US-NY-109")
+    result = await entry.start_reconfigure_flow(hass)
+    assert result["step_id"] == "reconfigure"
+
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_LOCATION: {**AREA, "radius": 80000}})
+    assert result["errors"] == {CONF_LOCATION: "radius_out_of_range"}
+
+    with NO_SETUP:
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_LOCATION: {**AREA, "radius": 40000}})
+        await hass.async_block_till_done()
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reconfigure_successful"
+    assert ebird.call_count == 0
+
+    assert entry.data == {CONF_API_KEY: API_KEY, "latitude": LATITUDE, "longitude": LONGITUDE, CONF_RADIUS_KM: 40}
+    assert entry.options[CONF_REGION] == "US-NY-109"
+
+
+async def test_a_moved_centre_picks_its_region_again(hass: HomeAssistant, ebird: AiohttpClientMocker) -> None:
+    entry = birds_entry(hass, region="US-NY-109")
+    result = await entry.start_reconfigure_flow(hass)
+    with NO_SETUP:
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_LOCATION: {"latitude": 61.0, "longitude": 25.7, "radius": 25000}}
+        )
+        await hass.async_block_till_done()
+    assert ebird.call_count == 1
+
+    assert result["reason"] == "reconfigure_successful"
+    assert (entry.data["latitude"], entry.data["longitude"], entry.unique_id) == (61.0, 25.7, "61.00_25.70")
+    assert entry.options == {CONF_SCAN_INTERVAL: 60, CONF_RECENT_DAYS: 7, CONF_BACK_DAYS: 30, CONF_REGION: REGION}
+
+
+async def test_an_area_cant_move_onto_another(hass: HomeAssistant, ebird: AiohttpClientMocker) -> None:
+    birds_entry(hass)
+    other = birds_entry(hass, area=1)
+    result = await other.start_reconfigure_flow(hass)
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_LOCATION: AREA})
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+    assert other.unique_id == "area1"
+
+
+async def test_a_refused_key_while_moving_the_centre_changes_nothing(hass: HomeAssistant, aioclient_mock: AiohttpClientMocker) -> None:
+    aioclient_mock.get(f"{EBIRD_URL}/ref/hotspot/geo", status=403)
+    entry = birds_entry(hass)
+    result = await entry.start_reconfigure_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_LOCATION: {"latitude": 61.0, "longitude": 25.7, "radius": 40000}}
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "invalid_auth"}
+    assert entry.data == {CONF_API_KEY: API_KEY, "latitude": LATITUDE, "longitude": LONGITUDE, CONF_RADIUS_KM: 25}
+    assert (entry.unique_id, entry.options[CONF_REGION]) == (f"{LATITUDE:.2f}_{LONGITUDE:.2f}", REGION)

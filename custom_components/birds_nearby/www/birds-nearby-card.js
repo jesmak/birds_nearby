@@ -1,4 +1,4 @@
-/*! birds-nearby-card 1.3.1 | MIT License */
+/*! birds-nearby-card 1.4.0 | MIT License */
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __decorateClass = (decorators, target, key, kind) => {
@@ -597,7 +597,7 @@ function r5(r6) {
 }
 
 // src/const.ts
-var CARD_VERSION = "1.3.1";
+var CARD_VERSION = "1.4.0";
 var PLATFORM = "birds_nearby";
 var SENSORS = ["notable", "recent", "year_list"];
 var THREATENED = ["VU", "EN", "CR", "EW", "EX"];

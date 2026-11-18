@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from freezegun.api import FrozenDateTimeFactory
@@ -13,7 +13,7 @@ from homeassistant.util import dt as dt_util
 from pytest_homeassistant.common import async_capture_events, async_fire_time_changed
 from pytest_homeassistant.test_util.aiohttp import AiohttpClientMocker
 
-from custom_components.birds_nearby.const import EBIRD_URL, EVENT_FIRST_IN_REGION, EVENT_FIRST_OF_YEAR, EVENT_NOTABLE
+from custom_components.birds_nearby.const import CONF_RADIUS_KM, EBIRD_URL, EVENT_FIRST_IN_REGION, EVENT_FIRST_OF_YEAR, EVENT_NOTABLE
 from custom_components.birds_nearby.pictures import Picture, SpeciesInfo
 from custom_components.birds_nearby.sightings import Memory
 
@@ -148,6 +148,57 @@ async def test_the_memory_survives_a_restart(hass: HomeAssistant, ebird: Aiohttp
 
     assert events == [], "the species seen before the restart aren't new after it"
     assert hass.states.get("sensor.birds_nearby_year_list").state == "2"
+
+
+async def test_a_changed_area_keeps_the_memory_and_takes_one_poll_quietly(
+    hass: HomeAssistant, aioclient_mock: AiohttpClientMocker, freezer: FrozenDateTimeFactory
+) -> None:
+    answer(aioclient_mock)
+    entry = await set_up(hass)
+    memory = entry.runtime_data.memory
+    memory.year_list["eurbla"] = "2026-10-10"
+    firsts = async_capture_events(hass, EVENT_FIRST_OF_YEAR)
+    notables = async_capture_events(hass, EVENT_NOTABLE)
+
+    # A wider radius reaches a rarity, and an older checklist of a species already listed.
+    aioclient_mock.clear_requests()
+    answer(aioclient_mock, recent=[observation(observed="2026-10-05 07:00", checklist="S900050"), RECENT[1], RARITY], notable=[RARITY])
+    hass.config_entries.async_update_entry(entry, data={**entry.data, CONF_RADIUS_KM: 50})
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert firsts == notables == [], "what the new area brings in isn't new"
+    memory = entry.runtime_data.memory
+    assert memory.year_list == {"eurbla": "2026-10-10", "hoocro1": "", "palhar1": ""}
+    assert memory.area == [60.98, 25.66, 50]
+
+    # The poll after it is an ordinary one.
+    freezer.tick(timedelta(minutes=61))
+    aioclient_mock.clear_requests()
+    answer(aioclient_mock, recent=[*RECENT, RARITY, observation(species="gretit1", name="Great Tit", checklist="S900101")])
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    assert [event.data["species_code"] for event in firsts] == ["gretit1"]
+
+
+async def test_a_memory_from_before_areas_were_kept_takes_no_quiet_poll(
+    hass: HomeAssistant, hass_storage, aioclient_mock: AiohttpClientMocker
+) -> None:
+    answer(aioclient_mock)
+    entry = await set_up(hass)
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    del hass_storage[f"birds_nearby.{entry.entry_id}"]["data"]["memory"]["area"]
+
+    firsts = async_capture_events(hass, EVENT_FIRST_OF_YEAR)
+    aioclient_mock.clear_requests()
+    answer(aioclient_mock, recent=[*RECENT, RARITY])
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert [event.data["species_code"] for event in firsts] == ["palhar1"]
+    assert entry.runtime_data.memory.area == [60.98, 25.66, 25]
 
 
 async def test_a_refused_key_asks_for_a_new_one(hass: HomeAssistant, aioclient_mock: AiohttpClientMocker) -> None:
