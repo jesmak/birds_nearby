@@ -265,10 +265,10 @@ describe("filling the rows on automatic rows", () => {
     }
 
     it.each([
-        ["a content of a row, 56 px", {}, 45, "min-height: 56px; --spare: 0px"],
+        ["a content of a row, 56 px", {}, 45, "min-height: 56px"],
         ["a content a pixel over a row, to two", {}, 46, "min-height: 120px; --spare: 63px"],
         ["a content of a row and a half, to two with the half spare", {}, 77, "min-height: 120px; --spare: 32px"],
-        ["a content of a row and a half, kept with half rows", { row_step: "half" as const }, 77, "min-height: 88px; --spare: 0px"],
+        ["a content of a row and a half, kept with half rows", { row_step: "half" as const }, 77, "min-height: 88px"],
         // 109.4 + 11 is 120.4, a fraction over two rows: three, so the card never ends past its rows.
         ["a content a fraction over two rows, to three", {}, 109.4, "min-height: 184px; --spare: 63px"],
         [
@@ -279,14 +279,26 @@ describe("filling the rows on automatic rows", () => {
         ],
         // The picker's 500 px, rounded down to the rows: 440.
         ["up to a limit, under it", { max_height: 500 }, 77, "max-height: 440px; min-height: 120px; --spare: 32px"],
-        [
-            "up to a limit, over it, on the limit rounded down to the rows",
-            { max_height: 500 },
-            700,
-            "max-height: 440px; min-height: 440px; --spare: 0px",
-        ],
+        ["up to a limit, over it, on the limit rounded down to the rows", { max_height: 500 }, 700, "max-height: 440px; min-height: 440px"],
     ])("%s", async (_name, config, bottom, style) => {
         expect(one(await filled(config, "grid", bottom), "ha-card").getAttribute("style")).toBe(style);
+    });
+
+    // Held to 300 px, the content is the last part's end and 11 px of padding: 271 px leaves 29, which goes under the header
+    // as on filled rows, and 211 px leaves 89, a row or more, which goes under the list.
+    it.each([
+        ["less than a row to spare under the header", 260, "height: 300px; --spare: 29px"],
+        ["a row or more to spare under the list", 200, "height: 300px"],
+    ])("held to a height, puts %s", async (_name, bottom, style) => {
+        const element = await card({ height: 300 }, "grid");
+        const haCard = one(element, "ha-card");
+        width(haCard, 300);
+        width(one(element, ".tabs"), 483);
+        textWidths(() => 10);
+        box(haCard, 0, 300);
+        box(all(element, "ha-card > .header, ha-card > .tabs, ha-card > .scroll > *").at(-1)!, bottom - 64, bottom);
+        await measure(element);
+        expect(haCard.getAttribute("style")).toBe(style);
     });
 
     it("puts the message's spare room above it, as its top padding, each line half a row", async () => {
@@ -398,7 +410,7 @@ describe("measuring in drawn and layout pixels", () => {
         // 48.3 is a real fraction over 48, not noise: the slack doesn't hide it, and the spare loses that pixel, 60.
         ["a distance a real fraction over a whole pixel", 48.3, "min-height: 120px; --spare: 60px"],
         // 237 drawn as 189.6 unscales to a content of 248.00000000000003: exactly four rows, not five.
-        ["a distance whose unscaling leaves noise on a row's edge", 237, "min-height: 248px; --spare: 0px"],
+        ["a distance whose unscaling leaves noise on a row's edge", 237, "min-height: 248px"],
     ])("fills the same rows while a dialog scales the card as at rest, %s", async (_name, bottom, style) => {
         expect(await filledAtScale(bottom)).toBe(style);
     });

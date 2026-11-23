@@ -14,7 +14,7 @@ import { ScrollFade, fadeStyles } from "./fade";
 import type { HomeAssistant } from "./hass";
 import { gridMinRows, heightCardSize, heightStyle, validHeight } from "./height";
 import { LANGUAGE_CODES, browserLanguage, translate } from "./localize/localize";
-import { drawnScale, fillLimit, filledHeight, filledStyle, spareRoom, validRowStep } from "./rows";
+import { drawnScale, fillLimit, filledHeight, filledStyle, heldSpare, spareRoom, validRowStep } from "./rows";
 import {
     areaDevices,
     areaSensors,
@@ -430,7 +430,7 @@ export class BirdsNearbyCard extends LitElement {
     /** The card's inline style: the height it is held to, or the rows it fills up to any limit, with their spare room. */
     private cardStyle(): string {
         const style = filledStyle(this.config ?? {}, this.layout, this.minimumHeight(), this.filled);
-        return this.filled ? `${style}; --spare: ${this.spare}px` : style;
+        return this.spare ? [style, `--spare: ${this.spare}px`].filter(Boolean).join("; ") : style;
     }
 
     private measureSoon(): void {
@@ -505,7 +505,8 @@ export class BirdsNearbyCard extends LitElement {
      */
     private fillRows(card: HTMLElement, scale: number): void {
         const limit = fillLimit(this.config ?? {}, this.layout, this.minimumHeight());
-        if (!limit) {
+        const held = !limit && Boolean(heightStyle(this.config ?? {}, this.layout, this.minimumHeight()));
+        if (!limit && !held) {
             this.filled = 0;
             this.spare = 0;
             return;
@@ -518,9 +519,14 @@ export class BirdsNearbyCard extends LitElement {
             return;
         }
         const style = getComputedStyle(card);
-        // The drawn distance unscaled, as the padding and border added to it are the layout's.
+        // The drawn distance unscaled, as the padding, border and scroll added to it are the layout's. However far a held
+        // card's list is scrolled.
         const drawn = (last.getBoundingClientRect().bottom - card.getBoundingClientRect().top) / scale;
-        let content = drawn + px(style.paddingBottom) + px(style.borderBottomWidth);
+        let content =
+            drawn +
+            (card.querySelector<HTMLElement>(":scope > .scroll")?.scrollTop ?? 0) +
+            px(style.paddingBottom) +
+            px(style.borderBottomWidth);
         // The spare room as drawn now: under the header, or above the message.
         const header = card.querySelector<HTMLElement>(":scope > .header");
         const message = card.querySelector<HTMLElement>(":scope > .message");
@@ -528,6 +534,15 @@ export class BirdsNearbyCard extends LitElement {
             content -= px(getComputedStyle(header).paddingBottom);
         } else if (message) {
             content -= px(getComputedStyle(message).paddingTop);
+        }
+        // Held to a height, less than a row to spare goes where it does on filled rows, and more under the list.
+        if (held) {
+            const spare = heldSpare(card.getBoundingClientRect().height / scale, content);
+            if (this.filled || spare !== this.spare) {
+                this.filled = 0;
+                this.spare = spare;
+            }
+            return;
         }
         const filled = filledHeight(content, this.config ?? {}, limit);
         const spare = spareRoom(filled, content);

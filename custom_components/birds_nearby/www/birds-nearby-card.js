@@ -782,6 +782,10 @@ function filledHeight(content, config, limit = Infinity) {
 function spareRoom(filled, content) {
   return Math.max(0, Math.floor(filled - content + SLACK_PX));
 }
+function heldSpare(held, content) {
+  const spare = spareRoom(held, content);
+  return spare < ROW_PX ? spare : 0;
+}
 function fillLimit(config, layout, minimum = 0) {
   const rows = config.grid_options ? config.grid_options.rows : config.layout_options?.grid_rows;
   if (layout !== "grid" || typeof rows === "number") {
@@ -1375,7 +1379,7 @@ var BirdsNearbyCard = class extends i4 {
   /** The card's inline style: the height it is held to, or the rows it fills up to any limit, with their spare room. */
   cardStyle() {
     const style = filledStyle(this.config ?? {}, this.layout, this.minimumHeight(), this.filled);
-    return this.filled ? `${style}; --spare: ${this.spare}px` : style;
+    return this.spare ? [style, `--spare: ${this.spare}px`].filter(Boolean).join("; ") : style;
   }
   measureSoon() {
     cancelAnimationFrame(this.frame ?? 0);
@@ -1443,7 +1447,8 @@ var BirdsNearbyCard = class extends i4 {
    */
   fillRows(card, scale) {
     const limit = fillLimit(this.config ?? {}, this.layout, this.minimumHeight());
-    if (!limit) {
+    const held = !limit && Boolean(heightStyle(this.config ?? {}, this.layout, this.minimumHeight()));
+    if (!limit && !held) {
       this.filled = 0;
       this.spare = 0;
       return;
@@ -1455,13 +1460,21 @@ var BirdsNearbyCard = class extends i4 {
     }
     const style = getComputedStyle(card);
     const drawn = (last.getBoundingClientRect().bottom - card.getBoundingClientRect().top) / scale;
-    let content = drawn + px(style.paddingBottom) + px(style.borderBottomWidth);
+    let content = drawn + (card.querySelector(":scope > .scroll")?.scrollTop ?? 0) + px(style.paddingBottom) + px(style.borderBottomWidth);
     const header = card.querySelector(":scope > .header");
     const message = card.querySelector(":scope > .message");
     if (header) {
       content -= px(getComputedStyle(header).paddingBottom);
     } else if (message) {
       content -= px(getComputedStyle(message).paddingTop);
+    }
+    if (held) {
+      const spare2 = heldSpare(card.getBoundingClientRect().height / scale, content);
+      if (this.filled || spare2 !== this.spare) {
+        this.filled = 0;
+        this.spare = spare2;
+      }
+      return;
     }
     const filled = filledHeight(content, this.config ?? {}, limit);
     const spare = spareRoom(filled, content);
