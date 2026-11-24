@@ -279,4 +279,19 @@ describe("birds-nearby-card-editor", () => {
         );
         expect(changed).toHaveBeenCalledWith({ type: "custom:birds-nearby-card", device: AREA, height_mode: "max", max_height: 500 });
     });
+
+    it.each([
+        ["leaves the default scroll indicator out", "both", {}],
+        ["keeps another scroll indicator", "fade", { scroll_indicator: "fade" }],
+    ])("%s", (_case, indicator, kept) => {
+        const editor = new BirdsNearbyCardEditor();
+        const changed = vi.fn();
+        editor.addEventListener("config-changed", (event) => changed((event as CustomEvent).detail.config));
+        (editor as unknown as { valueChanged(event: CustomEvent): void }).valueChanged(
+            new CustomEvent("value-changed", {
+                detail: { value: { type: "custom:birds-nearby-card", device: AREA, scroll_indicator: indicator } },
+            }),
+        );
+        expect(changed).toHaveBeenCalledWith({ type: "custom:birds-nearby-card", device: AREA, ...kept });
+    });
 });

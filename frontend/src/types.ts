@@ -1,7 +1,8 @@
+import type { ScrollIndicatorConfig } from "./fade";
 import type { LovelaceCardConfig } from "./hass";
 import type { RowStepConfig } from "./rows";
 
-export interface BirdsNearbyCardConfig extends LovelaceCardConfig, RowStepConfig {
+export interface BirdsNearbyCardConfig extends LovelaceCardConfig, RowStepConfig, ScrollIndicatorConfig {
     /** The area's device, from the Birds Nearby integration. */
     device: string;
     /** Replaces the card's title. */

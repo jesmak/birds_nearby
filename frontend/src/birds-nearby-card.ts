@@ -7,10 +7,10 @@ import { LitElement, css, html, nothing } from "lit";
 import type { CSSResultGroup, PropertyValues, TemplateResult } from "lit";
 import { property, state } from "lit/decorators.js";
 
-import { CARD_VERSION, SENSORS, STUB_MAX_HEIGHT } from "./const";
+import { CARD_VERSION, DEFAULT_SCROLL_INDICATOR, SENSORS, STUB_MAX_HEIGHT } from "./const";
 import type { SensorKey } from "./const";
 import "./editor";
-import { ScrollFade, fadeStyles } from "./fade";
+import { ScrollFade, fadeStyles, scrollIndicator, validScrollIndicator } from "./fade";
 import type { HomeAssistant } from "./hass";
 import { gridMinRows, heightCardSize, heightStyle, validHeight } from "./height";
 import { LANGUAGE_CODES, browserLanguage, translate } from "./localize/localize";
@@ -103,7 +103,11 @@ export class BirdsNearbyCard extends LitElement {
     constructor() {
         super();
         // Fades the list's edges while the card is held to a height, through the card's own lifecycle.
-        new ScrollFade(this, () => (this.heightStyle() ? this.renderRoot.querySelectorAll<HTMLElement>("ha-card > .scroll") : []));
+        new ScrollFade(
+            this,
+            () => (this.heightStyle() ? this.renderRoot.querySelectorAll<HTMLElement>("ha-card > .scroll") : []),
+            () => scrollIndicator(this.config ?? {}, DEFAULT_SCROLL_INDICATOR),
+        );
     }
 
     public connectedCallback(): void {
@@ -138,6 +142,9 @@ export class BirdsNearbyCard extends LitElement {
         }
         if (!validRowStep(config)) {
             throw new Error(translate(browserLanguage(), "common.invalid_row_step"));
+        }
+        if (!validScrollIndicator(config)) {
+            throw new Error(translate(browserLanguage(), "common.invalid_scroll_indicator"));
         }
         if (this.config && this.config.device !== config.device) {
             // Another area's opened sighting is none of this one's.

@@ -598,10 +598,151 @@ function r5(r6) {
 
 // src/const.ts
 var CARD_VERSION = "1.4.0";
+var DEFAULT_SCROLL_INDICATOR = "both";
 var PLATFORM = "birds_nearby";
 var SENSORS = ["notable", "recent", "year_list"];
 var THREATENED = ["VU", "EN", "CR", "EW", "EX"];
 var STUB_MAX_HEIGHT = 500;
+
+// src/fade.ts
+var SCROLL_INDICATORS = ["both", "fade", "scrollbar"];
+function validScrollIndicator(config) {
+  return config.scroll_indicator === void 0 || config.scroll_indicator === null || SCROLL_INDICATORS.includes(config.scroll_indicator);
+}
+function scrollIndicator(config, fallback) {
+  return config.scroll_indicator ?? fallback;
+}
+function scrollIndicatorSchema(text) {
+  return [
+    {
+      name: "scroll_indicator",
+      selector: {
+        select: {
+          mode: "dropdown",
+          options: SCROLL_INDICATORS.map((value) => ({ value, label: text(`editor.scroll_indicator_${value}`) }))
+        }
+      }
+    }
+  ];
+}
+function scrollIndicatorData(config, fallback) {
+  return { ...config, scroll_indicator: scrollIndicator(config, fallback) };
+}
+function tidyScrollIndicator(config, fallback) {
+  const tidied = { ...config };
+  if (scrollIndicator(tidied, fallback) === fallback) {
+    delete tidied.scroll_indicator;
+  }
+  return tidied;
+}
+var fadeStyles = i`
+    .fades {
+        --fade-length: min(24px, 25%);
+        scroll-padding-block: calc(var(--fade-top-offset, 0px) + var(--fade-length, 24px)) var(--fade-length, 24px);
+    }
+
+    .fade-top {
+        mask-image: linear-gradient(
+            to bottom,
+            #000 var(--fade-top-offset, 0px),
+            transparent var(--fade-top-offset, 0px),
+            #000 calc(var(--fade-top-offset, 0px) + var(--fade-length, 24px))
+        );
+    }
+
+    .fade-bottom {
+        mask-image: linear-gradient(to top, transparent, #000 var(--fade-length, 24px));
+    }
+
+    .fade-top.fade-bottom {
+        mask-image: linear-gradient(
+            to bottom,
+            #000 var(--fade-top-offset, 0px),
+            transparent var(--fade-top-offset, 0px),
+            #000 calc(var(--fade-top-offset, 0px) + var(--fade-length, 24px)),
+            #000 calc(100% - var(--fade-length, 24px)),
+            transparent
+        );
+    }
+
+    /* Over the card's own scrollbar style, whatever its selector. */
+    .scroll-hidden {
+        scrollbar-width: none !important;
+    }
+
+    .scroll-hidden::-webkit-scrollbar {
+        display: none;
+    }
+`;
+function markFade(part) {
+  const hidden = part.scrollHeight - part.clientHeight;
+  part.classList.toggle("fade-top", hidden > 1 && part.scrollTop > 1);
+  part.classList.toggle("fade-bottom", hidden > 1 && hidden - part.scrollTop > 1);
+}
+var onScroll = (event) => markFade(event.currentTarget);
+var ScrollFade = class {
+  constructor(host, parts, indicator) {
+    this.host = host;
+    this.parts = parts;
+    this.indicator = indicator;
+    /** Each followed part with the children whose size it watches. */
+    this.followed = /* @__PURE__ */ new Map();
+    this.resized = typeof ResizeObserver === "undefined" ? void 0 : new ResizeObserver((entries) => {
+      for (const { target } of entries) {
+        const part = this.followed.has(target) ? target : target.parentElement;
+        if (part && this.followed.has(part)) {
+          markFade(part);
+        }
+      }
+    });
+    host.addController(this);
+  }
+  hostConnected() {
+    if (this.host.hasUpdated) {
+      this.follow();
+    }
+  }
+  hostUpdated() {
+    if (this.host.isConnected) {
+      this.follow();
+    }
+  }
+  hostDisconnected() {
+    for (const part of [...this.followed.keys()]) {
+      this.forget(part);
+    }
+  }
+  follow() {
+    const indicator = this.indicator();
+    const now = new Set(indicator === "scrollbar" ? [] : this.parts());
+    for (const part of [...this.followed.keys()]) {
+      if (!now.has(part)) {
+        this.forget(part);
+      }
+    }
+    for (const part of now) {
+      if (!this.followed.has(part)) {
+        part.addEventListener("scroll", onScroll, { passive: true });
+        this.resized?.observe(part);
+      }
+      part.classList.add("fades");
+      part.classList.toggle("scroll-hidden", indicator === "fade");
+      const before = this.followed.get(part) ?? [];
+      const children = [...part.children];
+      before.filter((child) => !children.includes(child)).forEach((child) => this.resized?.unobserve(child));
+      children.filter((child) => !before.includes(child)).forEach((child) => this.resized?.observe(child));
+      this.followed.set(part, children);
+      markFade(part);
+    }
+  }
+  forget(part) {
+    this.followed.get(part)?.forEach((child) => this.resized?.unobserve(child));
+    this.followed.delete(part);
+    part.removeEventListener("scroll", onScroll);
+    this.resized?.unobserve(part);
+    part.classList.remove("fades", "fade-top", "fade-bottom", "scroll-hidden");
+  }
+};
 
 // src/localize/languages/en.json
 var en_default = {
@@ -612,6 +753,7 @@ var en_default = {
     invalid_configuration: "Choose an area from the Birds Nearby integration",
     invalid_height: "The height must be a positive number of pixels",
     invalid_row_step: "Invalid rounding. row_step must be full or half.",
+    invalid_scroll_indicator: "Invalid scroll_indicator. It must be both, fade or scrollbar.",
     no_area: "The area isn't found. It may have been removed or disabled in the Birds Nearby integration.",
     not_found: "The sensor isn't found. It may be disabled.",
     unavailable: "No data from eBird right now"
@@ -650,7 +792,12 @@ var en_default = {
     row_step: "Rounding in a sections view",
     row_step_helper: "With automatic row height, the card's height is rounded up to whole rows, or to half rows to save space.",
     row_step_full: "Whole rows",
-    row_step_half: "Half rows"
+    row_step_half: "Half rows",
+    scroll_indicator: "Scrolling",
+    scroll_indicator_helper: "Shown when the card's height is limited and its content doesn't all fit",
+    scroll_indicator_both: "Faded edge and scrollbar",
+    scroll_indicator_fade: "Faded edge",
+    scroll_indicator_scrollbar: "Scrollbar"
   }
 };
 
@@ -663,6 +810,7 @@ var fi_default = {
     invalid_configuration: "Valitse alue Birds Nearby -integraatiosta",
     invalid_height: "Korkeuden pit\xE4\xE4 olla positiivinen m\xE4\xE4r\xE4 pikseleit\xE4",
     invalid_row_step: "Virheellinen py\xF6ristys. Py\xF6ristyksen (row_step) on oltava full tai half.",
+    invalid_scroll_indicator: "Virheellinen scroll_indicator. Sen on oltava both, fade tai scrollbar.",
     no_area: "Aluetta ei l\xF6ydy. Se on ehk\xE4 poistettu tai poistettu k\xE4yt\xF6st\xE4 Birds Nearby -integraatiossa.",
     not_found: "Anturia ei l\xF6ydy. Se on ehk\xE4 poistettu k\xE4yt\xF6st\xE4.",
     unavailable: "eBirdist\xE4 ei saada nyt tietoja"
@@ -701,7 +849,12 @@ var fi_default = {
     row_step: "Py\xF6ristys osioihin jaetussa n\xE4kym\xE4ss\xE4",
     row_step_helper: "Automaattisella rivikorkeudella kortin korkeus py\xF6ristet\xE4\xE4n yl\xF6sp\xE4in kokonaisiin riveihin, tai tilan s\xE4\xE4st\xE4miseksi puolikkaisiin riveihin.",
     row_step_full: "Kokonaisiin riveihin",
-    row_step_half: "Puolikkaisiin riveihin"
+    row_step_half: "Puolikkaisiin riveihin",
+    scroll_indicator: "Vieritys",
+    scroll_indicator_helper: "N\xE4kyy, kun kortin korkeus on rajattu eik\xE4 koko sis\xE4lt\xF6 mahdu siihen",
+    scroll_indicator_both: "H\xE4ivytetty reuna ja vierityspalkki",
+    scroll_indicator_fade: "H\xE4ivytetty reuna",
+    scroll_indicator_scrollbar: "Vierityspalkki"
   }
 };
 
@@ -837,7 +990,8 @@ function schema(config, text) {
   return [
     { name: "device", required: true, selector: { device: { filter: { integration: PLATFORM } } } },
     { name: "title", selector: { text: {} } },
-    ...rowStepSchema(config, text)
+    ...rowStepSchema(config, text),
+    ...scrollIndicatorSchema(text)
   ];
 }
 var BirdsNearbyCardEditor = class extends i4 {
@@ -851,7 +1005,7 @@ var BirdsNearbyCardEditor = class extends i4 {
     return b2`
             <ha-form
                 .hass=${this.hass}
-                .data=${rowStepData(this.config)}
+                .data=${scrollIndicatorData(rowStepData(this.config), DEFAULT_SCROLL_INDICATOR)}
                 .schema=${schema(this.config, (key) => this.text(key))}
                 .computeLabel=${(entry) => this.text(`editor.${entry.name}`)}
                 .computeHelper=${(entry) => this.helper(entry.name)}
@@ -860,7 +1014,7 @@ var BirdsNearbyCardEditor = class extends i4 {
         `;
   }
   valueChanged(event) {
-    const config = tidyRowStep(event.detail.value);
+    const config = tidyScrollIndicator(tidyRowStep(event.detail.value), DEFAULT_SCROLL_INDICATOR);
     if (!config.title) {
       delete config.title;
     }
@@ -887,104 +1041,6 @@ __decorateClass([
 if (!customElements.get("birds-nearby-card-editor")) {
   customElements.define("birds-nearby-card-editor", BirdsNearbyCardEditor);
 }
-
-// src/fade.ts
-var fadeStyles = i`
-    .fades {
-        --fade-length: min(24px, 25%);
-        scroll-padding-block: calc(var(--fade-top-offset, 0px) + var(--fade-length, 24px)) var(--fade-length, 24px);
-    }
-
-    .fade-top {
-        mask-image: linear-gradient(
-            to bottom,
-            #000 var(--fade-top-offset, 0px),
-            transparent var(--fade-top-offset, 0px),
-            #000 calc(var(--fade-top-offset, 0px) + var(--fade-length, 24px))
-        );
-    }
-
-    .fade-bottom {
-        mask-image: linear-gradient(to top, transparent, #000 var(--fade-length, 24px));
-    }
-
-    .fade-top.fade-bottom {
-        mask-image: linear-gradient(
-            to bottom,
-            #000 var(--fade-top-offset, 0px),
-            transparent var(--fade-top-offset, 0px),
-            #000 calc(var(--fade-top-offset, 0px) + var(--fade-length, 24px)),
-            #000 calc(100% - var(--fade-length, 24px)),
-            transparent
-        );
-    }
-`;
-function markFade(part) {
-  const hidden = part.scrollHeight - part.clientHeight;
-  part.classList.toggle("fade-top", hidden > 1 && part.scrollTop > 1);
-  part.classList.toggle("fade-bottom", hidden > 1 && hidden - part.scrollTop > 1);
-}
-var onScroll = (event) => markFade(event.currentTarget);
-var ScrollFade = class {
-  constructor(host, parts) {
-    this.host = host;
-    this.parts = parts;
-    /** Each followed part with the children whose size it watches. */
-    this.followed = /* @__PURE__ */ new Map();
-    this.resized = typeof ResizeObserver === "undefined" ? void 0 : new ResizeObserver((entries) => {
-      for (const { target } of entries) {
-        const part = this.followed.has(target) ? target : target.parentElement;
-        if (part && this.followed.has(part)) {
-          markFade(part);
-        }
-      }
-    });
-    host.addController(this);
-  }
-  hostConnected() {
-    if (this.host.hasUpdated) {
-      this.follow();
-    }
-  }
-  hostUpdated() {
-    if (this.host.isConnected) {
-      this.follow();
-    }
-  }
-  hostDisconnected() {
-    for (const part of [...this.followed.keys()]) {
-      this.forget(part);
-    }
-  }
-  follow() {
-    const now = new Set(this.parts());
-    for (const part of [...this.followed.keys()]) {
-      if (!now.has(part)) {
-        this.forget(part);
-      }
-    }
-    for (const part of now) {
-      if (!this.followed.has(part)) {
-        part.addEventListener("scroll", onScroll, { passive: true });
-        this.resized?.observe(part);
-      }
-      part.classList.add("fades");
-      const before = this.followed.get(part) ?? [];
-      const children = [...part.children];
-      before.filter((child) => !children.includes(child)).forEach((child) => this.resized?.unobserve(child));
-      children.filter((child) => !before.includes(child)).forEach((child) => this.resized?.observe(child));
-      this.followed.set(part, children);
-      markFade(part);
-    }
-  }
-  forget(part) {
-    this.followed.get(part)?.forEach((child) => this.resized?.unobserve(child));
-    this.followed.delete(part);
-    part.removeEventListener("scroll", onScroll);
-    this.resized?.unobserve(part);
-    part.classList.remove("fades", "fade-top", "fade-bottom");
-  }
-};
 
 // src/sightings.ts
 function areaDevices(hass) {
@@ -1108,7 +1164,11 @@ var BirdsNearbyCard = class extends i4 {
     this.filled = 0;
     this.spare = 0;
     this.resizes = typeof ResizeObserver === "undefined" ? void 0 : new ResizeObserver(() => this.measureSoon());
-    new ScrollFade(this, () => this.heightStyle() ? this.renderRoot.querySelectorAll("ha-card > .scroll") : []);
+    new ScrollFade(
+      this,
+      () => this.heightStyle() ? this.renderRoot.querySelectorAll("ha-card > .scroll") : [],
+      () => scrollIndicator(this.config ?? {}, DEFAULT_SCROLL_INDICATOR)
+    );
   }
   connectedCallback() {
     super.connectedCallback();
@@ -1137,6 +1197,9 @@ var BirdsNearbyCard = class extends i4 {
     }
     if (!validRowStep(config)) {
       throw new Error(translate(browserLanguage(), "common.invalid_row_step"));
+    }
+    if (!validScrollIndicator(config)) {
+      throw new Error(translate(browserLanguage(), "common.invalid_scroll_indicator"));
     }
     if (this.config && this.config.device !== config.device) {
       this.open = void 0;

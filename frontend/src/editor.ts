@@ -1,9 +1,13 @@
-/** The card's visual editor: the area, the title and the height's rounding. The height mode is set in YAML only. */
+/**
+ * The card's visual editor: the area, the title, the height's rounding and how a scrolling list shows there is more. The
+ * height mode is set in YAML only.
+ */
 import { LitElement, html, nothing } from "lit";
 import type { TemplateResult } from "lit";
 import { property, state } from "lit/decorators.js";
 
-import { PLATFORM } from "./const";
+import { DEFAULT_SCROLL_INDICATOR, PLATFORM } from "./const";
+import { scrollIndicatorData, scrollIndicatorSchema, tidyScrollIndicator } from "./fade";
 import type { HomeAssistant } from "./hass";
 import { browserLanguage, translate } from "./localize/localize";
 import { rowStepData, rowStepSchema, tidyRowStep } from "./rows";
@@ -18,6 +22,7 @@ function schema(config: BirdsNearbyCardConfig, text: (key: string) => string) {
         { name: "device", required: true, selector: { device: { filter: { integration: PLATFORM } } } },
         { name: "title", selector: { text: {} } },
         ...rowStepSchema(config, text),
+        ...scrollIndicatorSchema(text),
     ];
 }
 
@@ -36,7 +41,7 @@ export class BirdsNearbyCardEditor extends LitElement {
         return html`
             <ha-form
                 .hass=${this.hass}
-                .data=${rowStepData(this.config)}
+                .data=${scrollIndicatorData(rowStepData(this.config), DEFAULT_SCROLL_INDICATOR)}
                 .schema=${schema(this.config, (key) => this.text(key))}
                 .computeLabel=${(entry: SchemaEntry) => this.text(`editor.${entry.name}`)}
                 .computeHelper=${(entry: SchemaEntry) => this.helper(entry.name)}
@@ -46,7 +51,7 @@ export class BirdsNearbyCardEditor extends LitElement {
     }
 
     private valueChanged(event: CustomEvent<{ value: BirdsNearbyCardConfig }>): void {
-        const config: BirdsNearbyCardConfig = tidyRowStep(event.detail.value);
+        const config: BirdsNearbyCardConfig = tidyScrollIndicator(tidyRowStep(event.detail.value), DEFAULT_SCROLL_INDICATOR);
         if (!config.title) {
             delete config.title;
         }

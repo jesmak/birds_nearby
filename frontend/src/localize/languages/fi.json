@@ -6,6 +6,7 @@
         "invalid_configuration": "Valitse alue Birds Nearby -integraatiosta",
         "invalid_height": "Korkeuden pitää olla positiivinen määrä pikseleitä",
         "invalid_row_step": "Virheellinen pyöristys. Pyöristyksen (row_step) on oltava full tai half.",
+        "invalid_scroll_indicator": "Virheellinen scroll_indicator. Sen on oltava both, fade tai scrollbar.",
         "no_area": "Aluetta ei löydy. Se on ehkä poistettu tai poistettu käytöstä Birds Nearby -integraatiossa.",
         "not_found": "Anturia ei löydy. Se on ehkä poistettu käytöstä.",
         "unavailable": "eBirdistä ei saada nyt tietoja"
@@ -44,6 +45,11 @@
         "row_step": "Pyöristys osioihin jaetussa näkymässä",
         "row_step_helper": "Automaattisella rivikorkeudella kortin korkeus pyöristetään ylöspäin kokonaisiin riveihin, tai tilan säästämiseksi puolikkaisiin riveihin.",
         "row_step_full": "Kokonaisiin riveihin",
-        "row_step_half": "Puolikkaisiin riveihin"
+        "row_step_half": "Puolikkaisiin riveihin",
+        "scroll_indicator": "Vieritys",
+        "scroll_indicator_helper": "Näkyy, kun kortin korkeus on rajattu eikä koko sisältö mahdu siihen",
+        "scroll_indicator_both": "Häivytetty reuna ja vierityspalkki",
+        "scroll_indicator_fade": "Häivytetty reuna",
+        "scroll_indicator_scrollbar": "Vierityspalkki"
     }
 }
