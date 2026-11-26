@@ -400,7 +400,9 @@ translate the values. The map popup's texts and the compass directions are in `T
 `custom_components/birds_nearby/feed.py`. Species names come from eBird in Home Assistant's language.
 
 The card's texts are in `frontend/src/localize/languages/`, in the same way. The card finds a new file by itself and
-uses it when Home Assistant is set to that language. A text left out falls back to English.
+uses it when Home Assistant is set to that language. A text left out falls back to English. A file may name a
+region, such as `pt-br.json`. It is used for `pt-BR`, falling back to a file for the language alone (`pt.json`), and
+then to English.
 
 ## Development
 
